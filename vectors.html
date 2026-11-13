@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vektoren mit Prolog lernen</title>
+
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea, input[type="text"] {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        textarea {
+            height: 300px;
+            resize: vertical;
+        }
+        input[type="text"] {
+            height: 40px;
+        }
+        select {
+            background: white;
+            font-size: 15px;
+        }
+        .lesson, .hint {
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .lesson {
+            background: #eaf4fb;
+            border-left: 4px solid #3498db;
+        }
+        .hint {
+            margin-top: 8px;
+            background: #f0f2f4;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .output-box {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 70px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .success {
+            color: #2ecc71;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        #vector-diagram {
+            overflow-x: auto;
+            background: white;
+        }
+        #vector-diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        #vector-plot {
+            overflow-x: auto;
+            background: white;
+        }
+        #vector-plot svg {
+            display: block;
+            width: 100%;
+            min-width: 360px;
+            height: auto;
+            cursor: grab;
+            touch-action: none;
+        }
+        #vector-plot svg:active {
+            cursor: grabbing;
+        }
+        @media (max-width: 600px) {
+            body { padding: 14px; }
+            textarea { height: 260px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Vektoren mit Prolog lernen</h1>
+    <p>Vektoren werden als Prolog-Terme der Form <code>vec(X,Y,Z)</code> dargestellt. Die Regeln zerlegen sie in Komponenten und berechnen neue Terme.</p>
+
+    <section class="lesson" aria-label="Lernhinweise">
+        <strong>So startest du:</strong> Wähle eine Beispielabfrage und klicke auf „Abfrage ausführen“.
+        Probiere Addition, Subtraktion, Skalarmultiplikation, Skalarprodukt und Kreuzprodukt aus.
+        Ändere anschließend die Vektoren in der Wissensbasis oder direkt in der Abfrage.
+    </section>
+
+    <div class="container">
+        <div>
+            <label for="knowledge-base">Vektoren und Prolog-Regeln:</label>
+            <textarea id="knowledge-base" spellcheck="false">
+% Drei-dimensionale Vektoren als zusammengesetzte Terme
+vektor(a, vec(1, 2, 3)).
+vektor(b, vec(4, 5, 6)).
+vektor(c, vec(2, -1, 3)).
+
+% Komponentenweise Addition und Subtraktion
+vektor_addieren(vec(A, B, C), vec(D, E, F), vec(X, Y, Z)) :-
+    X is A + D,
+    Y is B + E,
+    Z is C + F.
+
+vektor_subtrahieren(vec(A, B, C), vec(D, E, F), vec(X, Y, Z)) :-
+    X is A - D,
+    Y is B - E,
+    Z is C - F.
+
+% Multiplikation mit einem Skalar
+skalieren(S, vec(A, B, C), vec(X, Y, Z)) :-
+    X is S * A,
+    Y is S * B,
+    Z is S * C.
+
+% Skalarprodukt: Ergebnis ist eine Zahl
+skalarprodukt(vec(A, B, C), vec(D, E, F), Ergebnis) :-
+    Ergebnis is A * D + B * E + C * F.
+
+% Kreuzprodukt: Ergebnis ist wieder ein Vektor
+kreuzprodukt(vec(A, B, C), vec(D, E, F), vec(X, Y, Z)) :-
+    X is B * F - C * E,
+    Y is C * D - A * F,
+    Z is A * E - B * D.</textarea>
+        </div>
+
+        <div>
+            <label for="examples">Beispielabfrage auswählen:</label>
+            <select id="examples" onchange="loadExample()">
+                <option value="vektor(a, A), vektor(b, B), vektor_addieren(A, B, Ergebnis)." data-hint="Vektoren werden komponentenweise addiert: (1+4, 2+5, 3+6) = (5,7,9).">Vektoren addieren</option>
+                <option value="vektor(a, A), vektor(b, B), vektor_subtrahieren(A, B, Ergebnis)." data-hint="Bei der Subtraktion wird jede Komponente einzeln subtrahiert: (1-4, 2-5, 3-6) = (-3,-3,-3).">Vektoren subtrahieren</option>
+                <option value="vektor(a, A), skalieren(3, A, Ergebnis)." data-hint="Ein Skalar multipliziert jede Komponente: 3 * (1,2,3) = (3,6,9).">Mit einem Skalar multiplizieren</option>
+                <option value="vektor(a, A), vektor(b, B), skalarprodukt(A, B, Ergebnis)." data-hint="Das Skalarprodukt multipliziert entsprechende Komponenten und addiert sie: 1*4 + 2*5 + 3*6 = 32.">Skalarprodukt berechnen</option>
+                <option value="vektor(a, A), vektor(b, B), kreuzprodukt(A, B, Ergebnis)." data-hint="Das Kreuzprodukt zweier 3D-Vektoren ergibt einen Vektor, der zu beiden Eingabevektoren senkrecht steht: (-3,6,-3).">Kreuzprodukt berechnen</option>
+                <option value="vektor(Name, V)." data-hint="Prolog kann alle gespeicherten Vektorfakten der Wissensbasis aufzählen.">Gespeicherte Vektoren anzeigen</option>
+            </select>
+            <div class="hint" id="hint" aria-live="polite">Vektoren werden komponentenweise addiert: (1+4, 2+5, 3+6) = (5,7,9).</div>
+        </div>
+
+        <div>
+            <label for="query">Abfrage (Query) – du kannst sie bearbeiten:</label>
+            <input type="text" id="query" value="vektor(a, A), vektor(b, B), vektor_addieren(A, B, Ergebnis)." spellcheck="false">
+        </div>
+
+        <button id="run-query" type="button" onclick="runProlog()">Abfrage ausführen</button>
+
+        <div>
+            <label for="output">Ergebnis:</label>
+            <div id="output" class="output-box" aria-live="polite">Noch keine Abfrage ausgeführt.</div>
+        </div>
+
+        <div>
+            <label>Vektordarstellung:</label>
+            <div id="vector-diagram" class="output-box" role="img" aria-live="polite">Die Darstellung erscheint nach der ersten Abfrage.</div>
+        </div>
+        <div>
+            <label>3D-Vektoransicht (D3.js):</label>
+            <div id="vector-plot" class="output-box" role="img" aria-live="polite">Die Vektoren werden nach der ersten Abfrage dargestellt.</div>
+            <p class="hint">Ansicht bewegen: Mit der Maus oder einem Finger in der Grafik ziehen.</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+
+        function loadExample() {
+            const select = document.getElementById("examples");
+            const option = select.options[select.selectedIndex];
+            document.getElementById("query").value = option.value;
+            document.getElementById("hint").textContent = option.dataset.hint;
+        }
+
+        function runProlog() {
+            const output = document.getElementById("output");
+            const diagram = document.getElementById("vector-diagram");
+            const program = document.getElementById("knowledge-base").value;
+            const query = document.getElementById("query").value.trim();
+
+            output.textContent = "Verarbeite...";
+            diagram.textContent = "Vektordarstellung wird erstellt...";
+
+            if (!query) {
+                output.innerHTML = '<span class="error">Bitte gib eine Prolog-Abfrage ein.</span>';
+                diagram.textContent = "Keine Abfrage zum Darstellen.";
+                return;
+            }
+
+            const session = pl.create();
+            session.consult(program, {
+                success: function() {
+                    session.query(query.endsWith(".") ? query : `${query}.`, {
+                        success: function() {
+                            output.textContent = "";
+                            collectAnswers(session, output, query, []);
+                        },
+                        error: function(error) {
+                            output.innerHTML = `<span class="error">Fehler in der Abfrage: ${escapeHtml(error)}</span>`;
+                            renderVectorDiagram(query, [], "Fehler in der Abfrage");
+                        }
+                    });
+                },
+                error: function(error) {
+                    output.innerHTML = `<span class="error">Fehler im Programm-Code:\n${escapeHtml(error)}</span>`;
+                    diagram.textContent = "Die Regeln konnten nicht verarbeitet werden.";
+                }
+            });
+        }
+
+        function collectAnswers(session, output, query, answers) {
+            session.answer({
+                success: function(answer) {
+                    const formatted = session.format_answer(answer);
+                    answers.push(formatted);
+                    output.innerHTML += `<span class="success">✔</span> ${escapeHtml(formatted)}\n`;
+                    collectAnswers(session, output, query, answers);
+                },
+                fail: function() {
+                    if (answers.length === 0) {
+                        output.textContent = "false.";
+                    } else {
+                        output.innerHTML += "\n(Keine weiteren Ergebnisse)";
+                    }
+                    renderVectorDiagram(query, answers, answers.length === 0 ? "false" : "");
+                },
+                error: function(error) {
+                    output.innerHTML += `<span class="error">\nLaufzeitfehler: ${escapeHtml(error)}</span>`;
+                    renderVectorDiagram(query, answers, "Laufzeitfehler");
+                },
+                limit: function() {
+                    output.innerHTML += "\nLimit erreicht.";
+                    renderVectorDiagram(query, answers, "Limit erreicht");
+                }
+            });
+        }
+
+        async function renderVectorDiagram(query, answers, status) {
+            const diagram = document.getElementById("vector-diagram");
+            renderVectorPlot(answers, status);
+            if (status) {
+                diagram.textContent = status === "false"
+                    ? "Die Abfrage liefert keine passenden Vektoren."
+                    : status;
+                return;
+            }
+
+            const operation = query.match(/\b(vektor_addieren|vektor_subtrahieren|skalieren|skalarprodukt|kreuzprodukt)\s*\(/);
+            const predicate = operation || (query.match(/\bvektor\s*\(/) ? ["vektor(", "vektor"] : null);
+            const operationNames = {
+                vektor_addieren: "Komponentenweise Addition",
+                vektor_subtrahieren: "Komponentenweise Subtraktion",
+                skalieren: "Skalarmultiplikation",
+                skalarprodukt: "Skalarprodukt",
+                kreuzprodukt: "Kreuzprodukt",
+                vektor: "Gespeicherte Vektoren"
+            };
+            const title = predicate ? operationNames[predicate[1]] : "Prolog-Abfrage";
+            const bindings = answers[0] || "";
+            if (!operation && predicate && predicate[1] === "vektor") {
+                const lines = ["flowchart LR"];
+                answers.forEach((answer, index) => {
+                    const match = answer.match(/\bName\s*=\s*([a-z][A-Za-z0-9_]*)\s*,\s*V\s*=\s*vec\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/);
+                    if (match) lines.push(`    v${index}["${match[1]} = (${match[2]}, ${match[3]}, ${match[4]})"]`);
+                });
+                if (lines.length === 1) {
+                    diagram.textContent = "Keine gespeicherten Vektoren gefunden.";
+                    return;
+                }
+                try {
+                    const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                    diagram.innerHTML = svg;
+                } catch (error) {
+                    diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                }
+                return;
+            }
+            const vectors = Array.from(bindings.matchAll(/\b([A-Z][A-Za-z0-9_]*)\s*=\s*vec\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g),
+                match => ({ name: match[1], value: `(${match[2]}, ${match[3]}, ${match[4]})` }));
+            const scalar = bindings.match(/\bErgebnis\s*=\s*(-?\d+(?:\.\d+)?)/);
+
+            if (vectors.length === 0) {
+                diagram.textContent = answers.length > 0
+                    ? `Prolog-Ergebnis: ${bindings}`
+                    : "Für diese Abfrage gibt es keine Vektordarstellung.";
+                return;
+            }
+
+            const result = vectors.find(vector => vector.name === "Ergebnis");
+            const operands = vectors.filter(vector => vector.name !== "Ergebnis");
+            if (predicate && predicate[1] === "vektor_subtrahieren" && result) {
+                const [first, second] = operands;
+                const firstComponents = first && first.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const secondComponents = second && second.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const resultComponents = result.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+
+                if (firstComponents && secondComponents && resultComponents) {
+                    const componentNames = ["x", "y", "z"];
+                    const lines = [
+                        "flowchart LR",
+                        `    first["Vektor ${first.name}<br/>${first.value}"]`,
+                        `    second["Vektor ${second.name}<br/>${second.value}"]`
+                    ];
+
+                    componentNames.forEach((component, index) => {
+                        lines.push(`    ${component}["${component}_Ergebnis = ${component}_1 − ${component}_2<br/>= ${firstComponents[index + 1]} − (${secondComponents[index + 1]}) = ${resultComponents[index + 1]}"]`);
+                        lines.push(`    first --> ${component}`);
+                        lines.push(`    second --> ${component}`);
+                    });
+                    lines.push(`    output["Differenzvektor ${result.value}"]`);
+                    componentNames.forEach(component => lines.push(`    ${component} --> output`));
+
+                    try {
+                        const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                        diagram.innerHTML = svg;
+                    } catch (error) {
+                        diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                    }
+                    return;
+                }
+            }
+
+            if (predicate && predicate[1] === "kreuzprodukt" && result) {
+                const [first, second] = operands;
+                const firstComponents = first && first.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const secondComponents = second && second.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const resultComponents = result.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+
+                if (firstComponents && secondComponents && resultComponents) {
+                    const firstValues = firstComponents.slice(1).map(Number);
+                    const secondValues = secondComponents.slice(1).map(Number);
+                    const calculations = [
+                        { name: "x", left: [1, 2], right: [2, 1] },
+                        { name: "y", left: [2, 0], right: [0, 2] },
+                        { name: "z", left: [0, 1], right: [1, 0] }
+                    ];
+                    const lines = [
+                        "flowchart LR",
+                        `    first["Vektor ${first.name}<br/>(${firstValues.join(", ")})"]`,
+                        `    second["Vektor ${second.name}<br/>(${secondValues.join(", ")})"]`
+                    ];
+
+                    calculations.forEach(component => {
+                        const [leftFirst, leftSecond] = component.left;
+                        const [rightFirst, rightSecond] = component.right;
+                        const positiveProduct = firstValues[leftFirst] * secondValues[leftSecond];
+                        const negativeProduct = firstValues[rightFirst] * secondValues[rightSecond];
+                        const componentIndex = component.name === "x" ? 0 : component.name === "y" ? 1 : 2;
+                        lines.push(`    ${component.name}["${component.name} = (${firstValues[leftFirst]} × ${secondValues[leftSecond]}) − (${firstValues[rightFirst]} × ${secondValues[rightSecond]})<br/>= ${positiveProduct} − ${negativeProduct} = ${resultComponents[componentIndex + 1]}"]`);
+                        lines.push(`    first --> ${component.name}`);
+                        lines.push(`    second --> ${component.name}`);
+                    });
+                    lines.push(`    output["Kreuzprodukt = ${result.value}"]`);
+                    calculations.forEach(component => lines.push(`    ${component.name} --> output`));
+
+                    try {
+                        const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                        diagram.innerHTML = svg;
+                    } catch (error) {
+                        diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                    }
+                    return;
+                }
+            }
+
+            if (predicate && predicate[1] === "skalarprodukt" && scalar) {
+                const [first, second] = operands;
+                const firstComponents = first && first.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const secondComponents = second && second.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+
+                if (firstComponents && secondComponents) {
+                    const componentNames = ["x", "y", "z"];
+                    const products = componentNames.map((_, index) =>
+                        Number(firstComponents[index + 1]) * Number(secondComponents[index + 1]));
+                    const sum = products.map((product, index) =>
+                        `${product < 0 && index > 0 ? "- " : index > 0 ? "+ " : ""}${Math.abs(product)}`).join(" ");
+                    const lines = [
+                        "flowchart LR",
+                        `    first["Vektor ${first.name}<br/>${first.value}"]`,
+                        `    second["Vektor ${second.name}<br/>${second.value}"]`
+                    ];
+
+                    componentNames.forEach((component, index) => {
+                        lines.push(`    ${component}["${component}_1 × ${component}_2<br/>= ${firstComponents[index + 1]} × ${secondComponents[index + 1]} = ${products[index]}"]`);
+                        lines.push(`    first --> ${component}`);
+                        lines.push(`    second --> ${component}`);
+                    });
+                    lines.push(`    sum["Skalarprodukt = ${sum}<br/>= ${scalar[1]}"]`);
+                    componentNames.forEach(component => lines.push(`    ${component} --> sum`));
+
+                    try {
+                        const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                        diagram.innerHTML = svg;
+                    } catch (error) {
+                        diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                    }
+                    return;
+                }
+            }
+
+            if (predicate && predicate[1] === "vektor_addieren" && result) {
+                const [first, second] = operands;
+                const firstComponents = first && first.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const secondComponents = second && second.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const resultComponents = result.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+
+                if (firstComponents && secondComponents && resultComponents) {
+                    const componentNames = ["x", "y", "z"];
+                    const lines = [
+                        "flowchart LR",
+                        `    first["Vektor ${first.name}<br/>${first.value}"]`,
+                        `    second["Vektor ${second.name}<br/>${second.value}"]`
+                    ];
+
+                    componentNames.forEach((component, index) => {
+                        lines.push(`    ${component}["${component}_Ergebnis = ${component}_1 + ${component}_2<br/>= ${firstComponents[index + 1]} + ${secondComponents[index + 1]} = ${resultComponents[index + 1]}"]`);
+                        lines.push(`    first --> ${component}`);
+                        lines.push(`    second --> ${component}`);
+                    });
+                    lines.push(`    output["Summenvektor ${result.value}"]`);
+                    componentNames.forEach(component => lines.push(`    ${component} --> output`));
+
+                    try {
+                        const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                        diagram.innerHTML = svg;
+                    } catch (error) {
+                        diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                    }
+                    return;
+                }
+            }
+
+            if (predicate && predicate[1] === "skalieren" && result) {
+                const input = operands[0];
+                const inputComponents = input && input.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const resultComponents = result.value.match(/^\((-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\)$/);
+                const scaleArgument = query.match(/\bskalieren\s*\(\s*([^,\s]+)/);
+                const scaleBinding = scaleArgument && bindings.match(new RegExp(`\\b${scaleArgument[1]}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)`));
+                const scaleValue = scaleArgument && (/^-?\d+(?:\.\d+)?$/.test(scaleArgument[1])
+                    ? scaleArgument[1]
+                    : scaleBinding && scaleBinding[1]);
+
+                if (inputComponents && resultComponents && scaleValue) {
+                    const componentNames = ["x", "y", "z"];
+                    const lines = [
+                        "flowchart LR",
+                        `    input["Eingabevektor ${input.name}<br/>${input.value}"]`,
+                        `    scalar["Skalar s = ${scaleValue}"]`
+                    ];
+
+                    componentNames.forEach((component, index) => {
+                        lines.push(`    ${component}["${component}' = s × ${component}<br/>= ${scaleValue} × ${inputComponents[index + 1]} = ${resultComponents[index + 1]}"]`);
+                        lines.push(`    input --> ${component}`);
+                        lines.push(`    scalar --> ${component}`);
+                    });
+                    lines.push(`    output["Ergebnis ${result.value}"]`);
+                    componentNames.forEach(component => lines.push(`    ${component} --> output`));
+
+                    try {
+                        const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                        diagram.innerHTML = svg;
+                    } catch (error) {
+                        diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+                    }
+                    return;
+                }
+            }
+
+            const lines = ["flowchart LR"];
+            operands.forEach((vector, index) => {
+                lines.push(`    v${index}["${vector.name} = ${vector.value}"]`);
+            });
+            if (predicate && predicate[1] === "skalieren") {
+                const scale = query.match(/\bskalieren\s*\(\s*(-?\d+(?:\.\d+)?)\s*,/);
+                if (scale) {
+                    lines.push(`    scalar["Skalar = ${scale[1]}"]`);
+                    lines.push("    scalar --> op");
+                }
+            }
+            lines.push(`    op["${title}"]`);
+            operands.forEach((_, index) => lines.push(`    v${index} --> op`));
+            if (result) {
+                lines.push(`    op --> answer["Ergebnis = ${result.value}"]`);
+            } else if (scalar) {
+                lines.push(`    op --> answer["Ergebnis = ${scalar[1]}"]`);
+            } else if (operands.length === 0) {
+                vectors.forEach((vector, index) => {
+                    lines.push(`    v${index}["${vector.name} = ${vector.value}"]`);
+                });
+            }
+
+            try {
+                const { svg } = await mermaid.render(`vector-${Date.now()}`, lines.join("\n"));
+                diagram.innerHTML = svg;
+            } catch (error) {
+                diagram.textContent = `Die Vektordarstellung konnte nicht gerendert werden: ${error.message}`;
+            }
+        }
+
+        function renderVectorPlot(answers, status) {
+            const container = document.getElementById("vector-plot");
+            if (typeof d3 === "undefined") {
+                container.textContent = "Die 3D-Vektordarstellung benötigt D3.js. Prüfe die Internetverbindung und lade die Seite erneut.";
+                return;
+            }
+            container.textContent = "";
+            const selection = d3.select(container);
+
+            if (status) {
+                selection.text(status === "false" ? "Keine Vektoren aus dieser Abfrage darzustellen." : status);
+                return;
+            }
+
+            const vectors = [];
+            answers.forEach(answer => {
+                const nameMatch = answer.match(/\bName\s*=\s*([a-z][A-Za-z0-9_]*)/);
+                for (const match of answer.matchAll(/\b([A-Z][A-Za-z0-9_]*)\s*=\s*vec\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)) {
+                    const label = nameMatch && match[1] === "V" ? nameMatch[1] : match[1];
+                    vectors.push({ label, x: Number(match[2]), y: Number(match[3]), z: Number(match[4]) });
+                }
+            });
+
+            if (vectors.length === 0) {
+                selection.text("Diese Abfrage enthält keine darstellbaren Vektoren.");
+                return;
+            }
+
+            const width = 760;
+            const height = 480;
+            const margin = 65;
+            const maxComponent = Math.max(1, ...vectors.flatMap(vector => [
+                Math.abs(vector.x), Math.abs(vector.y), Math.abs(vector.z)
+            ]));
+            const scale = Math.min(
+                (width - margin * 2) / (maxComponent * 1.6),
+                (height - margin * 2) / (maxComponent * 1.8)
+            );
+            const origin = { x: width / 2, y: height / 2 + 35 };
+            const svg = selection.append("svg")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .attr("aria-label", "Dreidimensionale Vektordarstellung mit x-, y- und z-Achsen");
+            const defs = svg.append("defs");
+            defs.append("marker")
+                .attr("id", "vector-arrowhead")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 8)
+                .attr("refY", 0)
+                .attr("markerWidth", 7)
+                .attr("markerHeight", 7)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#536471");
+
+            const axes = [
+                { label: "x", end: [maxComponent + 1, 0, 0] },
+                { label: "y", end: [0, maxComponent + 1, 0] },
+                { label: "z", end: [0, 0, maxComponent + 1] }
+            ];
+            const colors = d3.scaleOrdinal(d3.schemeTableau10);
+            let rotationZ = 0.98;
+            let rotationX = 0.66;
+
+            function project([x, y, z]) {
+                const rotatedX = x * Math.cos(rotationZ) - y * Math.sin(rotationZ);
+                const rotatedY = x * Math.sin(rotationZ) + y * Math.cos(rotationZ);
+                const projectedY = rotatedY * Math.cos(rotationX) - z * Math.sin(rotationX);
+                return [
+                    origin.x + rotatedX * scale * 0.78,
+                    origin.y - projectedY * scale * 0.78
+                ];
+            }
+
+            function drawScene() {
+                svg.selectAll(".scene").remove();
+                const scene = svg.append("g").attr("class", "scene");
+                const axisGroup = scene.append("g").attr("class", "axes");
+                axes.forEach(axis => {
+                    const start = project([0, 0, 0]);
+                    const end = project(axis.end);
+                    axisGroup.append("line")
+                        .attr("x1", start[0]).attr("y1", start[1])
+                        .attr("x2", end[0]).attr("y2", end[1])
+                        .attr("stroke", "#8996a3")
+                        .attr("stroke-width", 1.5)
+                        .attr("marker-end", "url(#vector-arrowhead)");
+                    axisGroup.append("text")
+                        .attr("x", end[0] + 8)
+                        .attr("y", end[1] - 5)
+                        .attr("fill", "#536471")
+                        .attr("font-size", 14)
+                        .attr("font-weight", "bold")
+                        .text(axis.label);
+                });
+
+                const vectorGroup = scene.append("g").attr("class", "vectors");
+                vectors.forEach((vector, index) => {
+                    const end = project([vector.x, vector.y, vector.z]);
+                    const color = colors(index);
+                    vectorGroup.append("line")
+                        .attr("x1", origin.x).attr("y1", origin.y)
+                        .attr("x2", end[0]).attr("y2", end[1])
+                        .attr("stroke", color)
+                        .attr("stroke-width", 3)
+                        .attr("marker-end", "url(#vector-arrowhead)");
+                    vectorGroup.append("circle")
+                        .attr("cx", end[0]).attr("cy", end[1]).attr("r", 4)
+                        .attr("fill", color);
+                    vectorGroup.append("text")
+                        .attr("x", end[0] + 9).attr("y", end[1] - 9)
+                        .attr("fill", color)
+                        .attr("font-size", 13)
+                        .attr("font-weight", "bold")
+                        .text(`${vector.label} (${vector.x}, ${vector.y}, ${vector.z})`);
+                });
+            }
+
+            drawScene();
+            svg.call(d3.drag().on("drag", event => {
+                rotationZ += event.dx * 0.01;
+                rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX + event.dy * 0.01));
+                drawScene();
+            }));
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[character]);
+        }
+    </script>
+</body>
+</html>

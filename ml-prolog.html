@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einfaches ML mit Tau Prolog</title>
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .container label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        #example-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        input[type="number"] {
+            height: 40px;
+        }
+        button {
+            align-self: flex-start;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .hint {
+            margin-top: 8px;
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+            background: #f0f2f4;
+        }
+        .lesson {
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+            background: #eaf4fb;
+            border-left: 4px solid #3498db;
+        }
+        .output-box {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 80px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .formula-box {
+            margin: 0;
+            overflow-x: auto;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .success {
+            color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <h1>Temperatur-Klassifikation mit Tau Prolog</h1>
+    <p>Ein einfacher 1-NN-Klassifikator ordnet eine Temperatur anhand der ähnlichsten beschrifteten Trainingsdaten einer Klasse zu.</p>
+
+    <section class="lesson" aria-label="Lernhinweise">
+        <strong>So funktioniert es:</strong> Das Modell berechnet den Abstand zu jedem Trainingswert.
+        Die Klasse des nächstgelegenen Werts wird als Vorhersage verwendet.
+    </section>
+
+    <div class="container">
+        <div>
+            <label for="output">Klassifikation:</label>
+            <div id="output" class="output-box" role="status" aria-live="polite">Gib eine Temperatur ein und starte die Klassifikation.</div>
+        </div>
+        <div>
+            <label for="prolog-formulas">Trainingsdaten und Prolog-Formel:</label>
+            <textarea id="prolog-formulas" class="formula-box" aria-label="Prolog-Fakten und Lernregel" readonly></textarea>
+        </div>
+        <form id="example-form">
+            <div>
+                <label for="example-input">Temperatur in °C:</label>
+                <input id="example-input" type="number" min="0" max="35" step="1" value="18" aria-describedby="example-hint" required>
+                <p id="example-hint" class="hint">Ganze Zahl von 0 bis 35. Die Vorhersage basiert auf dem ähnlichsten Trainingswert.</p>
+            </div>
+            <button type="submit">Temperatur klassifizieren</button>
+        </form>
+    </div>
+
+    <script>
+        const output = document.getElementById("output");
+        const exampleForm = document.getElementById("example-form");
+        const exampleInput = document.getElementById("example-input");
+
+        const prologCode = `
+            % Trainingsdaten: Temperatur in °C und zugehörige Klasse
+            beispiel(0, kalt).
+            beispiel(7, kalt).
+            beispiel(14, mild).
+            beispiel(21, mild).
+            beispiel(28, warm).
+            beispiel(35, warm).
+
+            % 1-NN: Wähle den Trainingswert mit dem kleinsten Abstand.
+            klassifiziere(Temperatur, Trainingswert, Klasse) :-
+                beispiel(Trainingswert, Klasse),
+                Abstand is abs(Temperatur - Trainingswert),
+                \\+ (
+                    beispiel(AndererWert, _),
+                    AndererAbstand is abs(Temperatur - AndererWert),
+                    AndererAbstand < Abstand
+                ).
+        `;
+        document.getElementById("prolog-formulas").value =
+            prologCode.trim().replace(/^ {12}/gm, "");
+
+        function showError(message) {
+            output.classList.add("error");
+            output.textContent = message;
+        }
+
+        exampleForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            output.classList.remove("error", "success");
+            const temperature = exampleInput.valueAsNumber;
+            if (!Number.isInteger(temperature) || temperature < 0 || temperature > 35) {
+                showError("Bitte gib eine ganze Temperatur zwischen 0 und 35 °C ein.");
+                return;
+            }
+
+            output.textContent = "Klassifiziere...";
+            const session = pl.create(1000);
+            session.consult(prologCode, {
+                success: function() {
+                    session.query("klassifiziere(" + temperature + ", Trainingswert, Klasse).", {
+                        success: function() {
+                            session.answer({
+                                success: function(answer) {
+                                    const classification = answer.lookup("Klasse").id;
+                                    output.classList.add("success");
+                                    output.textContent =
+                                        temperature + " °C wird als „" + classification +
+                                        "“ klassifiziert.\n" + session.format_answer(answer);
+                                },
+                                fail: function() {
+                                    showError("Keine passende Trainingsklasse gefunden.");
+                                },
+                                error: function(error) {
+                                    showError("Fehler bei der Klassifikation: " + error);
+                                }
+                            });
+                        },
+                        error: function(error) {
+                            showError("Fehler in der Abfrage: " + error);
+                        }
+                    });
+                },
+                error: function(error) {
+                    showError("Fehler im Prolog-Programm: " + error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

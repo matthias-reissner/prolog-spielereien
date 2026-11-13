@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alternativen mit Prolog modellieren</title>
+
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea, input[type="text"] {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        textarea {
+            height: 260px;
+            resize: vertical;
+        }
+        input[type="text"] {
+            height: 40px;
+        }
+        select {
+            background: white;
+            font-size: 15px;
+        }
+        .lesson, .hint {
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .lesson {
+            background: #eaf4fb;
+            border-left: 4px solid #3498db;
+        }
+        .hint {
+            margin-top: 8px;
+            background: #f0f2f4;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .output-box {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 80px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .success {
+            color: #2ecc71;
+        }
+        #graph-output {
+            overflow-x: auto;
+            background: white;
+        }
+        #graph-output svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .graph-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin: 8px 0 0;
+            color: #536471;
+            font-size: 14px;
+        }
+        .legend-line {
+            display: inline-block;
+            width: 28px;
+            margin-right: 6px;
+            border-top: 2px solid #666;
+            vertical-align: middle;
+        }
+        .legend-line.selected {
+            border-top: 5px solid #e67e22;
+        }
+        .legend-node {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            border: 2px solid #27ae60;
+            border-radius: 50%;
+            background: #d5f5e3;
+            vertical-align: middle;
+        }
+        @media (max-width: 600px) {
+            body { padding: 14px; }
+            textarea { height: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Alternativen mit Prolog modellieren</h1>
+    <p>Wir modellieren Software als gewichteten Graphen: Jeder Fakt <code>alternative(A, B, Ähnlichkeit)</code> ist eine Kante zwischen zwei Programmen. Der Wert von 1 bis 10 beschreibt, wie ähnlich sie sind; höhere Werte bedeuten größere Ähnlichkeit.</p>
+
+    <section class="lesson" aria-label="Lernhinweise">
+        <strong>So startest du:</strong> Wähle eine Beispielabfrage und klicke auf „Abfrage ausführen“.
+        Die Fakten <code>produkt/2</code> ordnen Programme einer Kategorie zu.
+        Die Fakten <code>alternative/3</code> speichern gewichtete Beziehungen einmalig;
+        <code>alternative_zu/3</code> leitet beide Richtungen ab. Der Wert ist eine beispielhafte Ähnlichkeitsskala von 1 bis 10.
+        Ändere danach die Fakten oder Abfrage und beobachte die Ergebnisse im Graphen.
+    </section>
+
+    <div class="container">
+        <div>
+            <label for="knowledge-base">Produkte, Alternativen und Prolog-Regeln:</label>
+            <textarea id="knowledge-base" spellcheck="false">
+% Produkte und ihre Kategorien
+produkt(firefox, browser).
+produkt(chrome, browser).
+produkt(brave, browser).
+produkt(libreoffice, office_suite).
+produkt(onlyoffice, office_suite).
+produkt(google_docs, office_suite).
+produkt(gimp, bildbearbeitung).
+produkt(krita, bildbearbeitung).
+
+% Ähnlichkeit von 1 (gering) bis 10 (sehr hoch); Beispielwerte
+alternative(firefox, chrome, 8).
+alternative(firefox, brave, 9).
+alternative(chrome, brave, 8).
+alternative(libreoffice, onlyoffice, 8).
+alternative(libreoffice, google_docs, 6).
+alternative(onlyoffice, google_docs, 7).
+alternative(gimp, krita, 8).
+
+% Alternativen samt Ähnlichkeit gelten in beide Richtungen.
+alternative_zu(X, Y, Aehnlichkeit) :- alternative(X, Y, Aehnlichkeit).
+alternative_zu(X, Y, Aehnlichkeit) :- alternative(Y, X, Aehnlichkeit).
+
+% Gibt die ähnlichste Alternative oder alle Gleichstände zurück.
+aehnlichste_alternative(Produkt, Alternative, Aehnlichkeit) :-
+    alternative_zu(Produkt, Alternative, Aehnlichkeit),
+    \+ (alternative_zu(Produkt, _, GroessereAehnlichkeit),
+        GroessereAehnlichkeit > Aehnlichkeit).</textarea>
+        </div>
+
+        <div>
+            <label for="examples">Beispielabfrage auswählen:</label>
+            <select id="examples" onchange="loadExample()">
+                <option value="alternative_zu(firefox, Alternative, Aehnlichkeit)." data-hint="Welche Browser sind Alternativen zu Firefox und wie ähnlich sind sie? Höhere Werte bedeuten eine größere Ähnlichkeit.">Alternativen zu Firefox mit Ähnlichkeit</option>
+                <option value="aehnlichste_alternative(firefox, Alternative, Aehnlichkeit)." data-hint="Die Regel vergleicht alle Alternativen zu Firefox und liefert nur die mit der höchsten Ähnlichkeit.">Ähnlichste Alternative zu Firefox</option>
+                <option value="alternative_zu(libreoffice, Alternative, Aehnlichkeit)." data-hint="Prolog fragt alle Alternativen zu LibreOffice einschließlich ihrer Ähnlichkeitswerte ab.">Alternativen zu LibreOffice</option>
+                <option value="alternative_zu(Alternative, krita, Aehnlichkeit)." data-hint="Auch rückwärts liefert Prolog Alternativen samt ihrem Ähnlichkeitswert.">Alternativen zu Krita</option>
+                <option value="produkt(Name, Kategorie)." data-hint="Listet alle Programme zusammen mit ihrer Kategorie auf.">Alle Produkte und Kategorien</option>
+                <option value="alternative(X, Y, Aehnlichkeit)." data-hint="Listet die einmalig gespeicherten Alternativbeziehungen und ihre Gewichte auf.">Gespeicherte gewichtete Alternativen</option>
+                <option value="alternative_zu(X, Y, Aehnlichkeit)." data-hint="Listet alle gewichteten Beziehungen in beide Richtungen auf. Jedes Alternativenpaar erscheint daher zweimal.">Alle Alternativen in beide Richtungen</option>
+            </select>
+            <div class="hint" id="hint" aria-live="polite">Welche Browser sind Alternativen zu Firefox? Die Regel findet passende Fakten unabhängig davon, in welcher Richtung sie gespeichert wurden.</div>
+        </div>
+
+        <div>
+            <label for="query">Abfrage (Query) – du kannst sie bearbeiten:</label>
+            <input type="text" id="query" value="alternative_zu(firefox, Alternative, Aehnlichkeit)." spellcheck="false">
+        </div>
+
+        <button id="run-query" type="button" onclick="runProlog()">Abfrage ausführen</button>
+
+        <div>
+            <label for="output">Ergebnis:</label>
+            <div id="output" class="output-box" aria-live="polite">Noch keine Abfrage ausgeführt.</div>
+        </div>
+
+        <div>
+            <label>Graphische Darstellung:</label>
+            <div id="graph-output" class="output-box" role="img" aria-live="polite">Der Graph wird nach der ersten Abfrage angezeigt.</div>
+            <p class="graph-legend">
+                <span><span class="legend-line"></span>Alternativbeziehung mit Ähnlichkeit 1–10</span>
+                <span><span class="legend-line selected"></span>Zur Abfrage passende Beziehung</span>
+                <span><span class="legend-node"></span>Zur Abfrage passendes Produkt</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+
+        function loadExample() {
+            const select = document.getElementById("examples");
+            const option = select.options[select.selectedIndex];
+            document.getElementById("query").value = option.value;
+            document.getElementById("hint").textContent = option.dataset.hint;
+        }
+
+        function runProlog() {
+            const output = document.getElementById("output");
+            const graph = document.getElementById("graph-output");
+            const program = document.getElementById("knowledge-base").value;
+            const query = document.getElementById("query").value.trim();
+
+            output.textContent = "Verarbeite...";
+            graph.textContent = "Graph wird erstellt...";
+
+            if (!query) {
+                output.innerHTML = '<span class="error">Bitte gib eine Prolog-Abfrage ein.</span>';
+                graph.textContent = "Keine Abfrage zum Darstellen.";
+                return;
+            }
+
+            const session = pl.create();
+            session.consult(program, {
+                success: function() {
+                    session.query(query.endsWith(".") ? query : `${query}.`, {
+                        success: function() {
+                            output.textContent = "";
+                            collectAnswers(session, output, program, query, []);
+                        },
+                        error: function(error) {
+                            output.innerHTML = `<span class="error">Fehler in der Abfrage: ${escapeHtml(error)}</span>`;
+                            renderGraph(program, query, [], "Fehler in der Abfrage");
+                        }
+                    });
+                },
+                error: function(error) {
+                    output.innerHTML = `<span class="error">Fehler im Programm-Code:\n${escapeHtml(error)}</span>`;
+                    graph.textContent = "Der Graph konnte nicht aus dem Programm gelesen werden.";
+                }
+            });
+        }
+
+        function collectAnswers(session, output, program, query, answers) {
+            session.answer({
+                success: function(answer) {
+                    const formatted = session.format_answer(answer);
+                    answers.push(formatted);
+                    output.innerHTML += `<span class="success">✔</span> ${escapeHtml(formatted)}\n`;
+                    collectAnswers(session, output, program, query, answers);
+                },
+                fail: function() {
+                    if (answers.length === 0) {
+                        output.textContent = "false.";
+                    } else {
+                        output.innerHTML += "\n(Keine weiteren Ergebnisse)";
+                    }
+                    renderGraph(program, query, answers, answers.length === 0 ? "false" : "");
+                },
+                error: function(error) {
+                    output.innerHTML += `<span class="error">\nLaufzeitfehler: ${escapeHtml(error)}</span>`;
+                    renderGraph(program, query, answers, "Laufzeitfehler");
+                },
+                limit: function() {
+                    output.innerHTML += "\nLimit erreicht.";
+                    renderGraph(program, query, answers, "Limit erreicht");
+                }
+            });
+        }
+
+        async function renderGraph(program, query, answers, status) {
+            const graph = document.getElementById("graph-output");
+            const source = program.replace(/%.*$/gm, "");
+            const products = new Map(Array.from(source.matchAll(/\bprodukt\s*\(\s*([a-z][A-Za-z0-9_]*)\s*,\s*([a-z][A-Za-z0-9_]*)\s*\)\s*\./g),
+                match => [match[1], match[2]]));
+            const edges = Array.from(source.matchAll(/\balternative\s*\(\s*([a-z][A-Za-z0-9_]*)\s*,\s*([a-z][A-Za-z0-9_]*)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*\./g),
+                match => ({ from: match[1], to: match[2], similarity: match[3] }));
+            edges.forEach(({ from, to }) => {
+                if (!products.has(from)) products.set(from, "unbekannt");
+                if (!products.has(to)) products.set(to, "unbekannt");
+            });
+
+            if (products.size === 0) {
+                graph.textContent = "Keine produkt/2- oder alternative/3-Fakten für die Grafik gefunden.";
+                return;
+            }
+
+            const highlights = getHighlights(query, answers, products, edges, status);
+            const nodeIds = new Map(Array.from(products.keys(), (product, index) => [product, `p${index}`]));
+            const lines = ["graph LR"];
+            products.forEach((category, product) => {
+                lines.push(`    ${nodeIds.get(product)}["${product}<br/>(${category})"]`);
+            });
+            edges.forEach(({ from, to, similarity }) => {
+                const edgeKey = getEdgeKey(from, to);
+                const connector = highlights.edges.has(edgeKey) ? "==>" : "-->";
+                lines.push(`    ${nodeIds.get(from)} ${connector}|${similarity}/10| ${nodeIds.get(to)}`);
+            });
+            if (highlights.nodes.size > 0) {
+                lines.push(`    class ${Array.from(highlights.nodes, product => nodeIds.get(product)).join(",")} result`);
+                lines.push("    classDef result fill:#d5f5e3,stroke:#27ae60,stroke-width:3px");
+            }
+
+            try {
+                const { svg } = await mermaid.render(`alternatives-${Date.now()}`, lines.join("\n"));
+                graph.innerHTML = svg;
+            } catch (error) {
+                graph.textContent = `Die Graphik konnte nicht gerendert werden: ${error.message}`;
+            }
+        }
+
+        function getHighlights(query, answers, products, edges, status) {
+            const result = { nodes: new Set(), edges: new Set() };
+            if (status) return result;
+
+            const parsed = query.match(/^\s*(alternative|alternative_zu|aehnlichste_alternative|produkt)\s*\((.*)\)\s*\.?\s*$/);
+            if (!parsed) return result;
+
+            const predicate = parsed[1];
+            const args = parsed[2].split(",").map(value => value.trim());
+            const rows = answers.map(answer => {
+                const row = {};
+                for (const match of answer.matchAll(/\b([A-Z][A-Za-z0-9_]*)\s*=\s*([a-z][A-Za-z0-9_]*|-?\d+(?:\.\d+)?)/g)) {
+                    row[match[1]] = match[2];
+                }
+                return row;
+            });
+            const resolve = (argument, row) => /^[A-Z_]/.test(argument) ? row[argument] : argument;
+
+            if (predicate === "produkt") {
+                rows.forEach(row => {
+                    const product = resolve(args[0], row);
+                    if (products.has(product)) result.nodes.add(product);
+                });
+            }
+
+            if (predicate === "alternative" || predicate === "alternative_zu" || predicate === "aehnlichste_alternative") {
+                const pairs = rows.length > 0 ? rows : [{}];
+                pairs.forEach(row => {
+                    const from = resolve(args[0], row);
+                    const to = resolve(args[1], row);
+                    const similarity = args.length > 2 ? resolve(args[2], row) : null;
+                    const edgeIndex = edges.findIndex(edge =>
+                        ((edge.from === from && edge.to === to) || (edge.from === to && edge.to === from))
+                        && (!similarity || edge.similarity === similarity));
+                    if (edgeIndex < 0) return;
+                    const edge = edges[edgeIndex];
+                    result.edges.add(getEdgeKey(edge.from, edge.to));
+                    result.nodes.add(edge.from);
+                    result.nodes.add(edge.to);
+                });
+            }
+
+            return result;
+        }
+
+        function getEdgeKey(left, right) {
+            return [left, right].sort().join("|");
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[character]);
+        }
+    </script>
+</body>
+</html>

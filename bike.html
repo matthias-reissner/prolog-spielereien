@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fahrrad-Stückliste mit Prolog lernen</title>
+
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea, input[type="text"] {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        textarea {
+            height: 330px;
+            resize: vertical;
+        }
+        input[type="text"] {
+            height: 40px;
+        }
+        select {
+            background: white;
+            font-size: 15px;
+        }
+        .lesson, .hint {
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .lesson {
+            background: #eaf4fb;
+            border-left: 4px solid #3498db;
+        }
+        .hint {
+            margin-top: 8px;
+            background: #f0f2f4;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .output-box {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 70px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .success {
+            color: #2ecc71;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        #bom-graph {
+            overflow-x: auto;
+            background: white;
+        }
+        #bom-graph svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            color: #536471;
+            font-size: 14px;
+        }
+        .legend-line {
+            display: inline-block;
+            width: 28px;
+            margin-right: 6px;
+            border-top: 2px solid #666;
+            vertical-align: middle;
+        }
+        .legend-line.selected {
+            border-top: 5px solid #e67e22;
+        }
+        .legend-node {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            border: 2px solid #27ae60;
+            border-radius: 50%;
+            background: #d5f5e3;
+            vertical-align: middle;
+        }
+        @media (max-width: 600px) {
+            body { padding: 14px; }
+            textarea { height: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Fahrrad-Stückliste mit Prolog</h1>
+    <p>Modelliere ein Fahrrad als Baugruppen und Einzelteile. In <code>enthaelt(Baugruppe, Anzahl, Teil)</code> bedeutet Anzahl, wie viele Teile direkt in dieser Baugruppe verbaut sind.</p>
+
+    <section class="lesson" aria-label="Lernhinweise">
+        <strong>So startest du:</strong> Wähle eine Beispielabfrage und klicke auf „Abfrage ausführen“.
+        Die Regel <code>bedarf/3</code> verfolgt Baugruppen rekursiv und multipliziert die Mengen entlang des Baums.
+        So kannst du zum Beispiel ermitteln, wie viele Speichen für ein Fahrrad benötigt werden.
+        Ändere danach Stücklisten-Fakten oder formuliere eigene Abfragen.
+    </section>
+
+    <div class="container">
+        <div>
+            <label for="knowledge-base">Fahrrad-Stückliste und Prolog-Regeln:</label>
+            <textarea id="knowledge-base" spellcheck="false">
+% enthaelt(Baugruppe, Anzahl, Teil)
+enthaelt(fahrrad, 1, rahmen).
+enthaelt(fahrrad, 1, gabel).
+enthaelt(fahrrad, 1, lenkerbaugruppe).
+enthaelt(fahrrad, 1, sattelbaugruppe).
+enthaelt(fahrrad, 2, rad).
+enthaelt(fahrrad, 1, antrieb).
+enthaelt(fahrrad, 2, bremse).
+
+enthaelt(lenkerbaugruppe, 1, lenker).
+enthaelt(lenkerbaugruppe, 1, lenkerband).
+enthaelt(sattelbaugruppe, 1, sattel).
+enthaelt(sattelbaugruppe, 1, sattelstuetze).
+
+enthaelt(rad, 1, felge).
+enthaelt(rad, 1, nabe).
+enthaelt(rad, 32, speiche).
+enthaelt(rad, 32, speichennippel).
+enthaelt(rad, 1, reifen).
+enthaelt(rad, 1, schlauch).
+
+enthaelt(antrieb, 1, kurbelgarnitur).
+enthaelt(antrieb, 1, kette).
+enthaelt(antrieb, 1, kassette).
+enthaelt(antrieb, 1, schaltwerk).
+enthaelt(kurbelgarnitur, 2, kurbelarm).
+enthaelt(kurbelgarnitur, 2, pedal).
+enthaelt(kurbelgarnitur, 1, kettenblatt).
+
+enthaelt(bremse, 1, bremshebel).
+enthaelt(bremse, 1, bremssattel).
+enthaelt(bremse, 2, bremsbelag).
+
+% Direkte Teile einer Baugruppe
+direkt_enthalten(Baugruppe, Anzahl, Teil) :-
+    enthaelt(Baugruppe, Anzahl, Teil).
+
+% Gesamtbedarf: Mengen verschachtelter Baugruppen multiplizieren
+bedarf(Baugruppe, Anzahl, Teil) :-
+    enthaelt(Baugruppe, Anzahl, Teil).
+bedarf(Baugruppe, Gesamtanzahl, Teil) :-
+    enthaelt(Baugruppe, AnzahlBaugruppe, Unterbaugruppe),
+    bedarf(Unterbaugruppe, AnzahlTeil, Teil),
+    Gesamtanzahl is AnzahlBaugruppe * AnzahlTeil.</textarea>
+        </div>
+
+        <div>
+            <label for="examples">Beispielabfrage auswählen:</label>
+            <select id="examples" onchange="loadExample()">
+                <option value="direkt_enthalten(fahrrad, Anzahl, Teil)." data-hint="Zeigt die Baugruppen und Teile, die direkt am Fahrrad montiert sind.">Was ist direkt am Fahrrad montiert?</option>
+                <option value="bedarf(fahrrad, Anzahl, Teil)." data-hint="Listet jedes Teil und jede Unterbaugruppe mit der erforderlichen Menge auf, auch wenn sie in einer tieferen Baugruppe steckt.">Welche Teile enthält das ganze Fahrrad?</option>
+                <option value="bedarf(fahrrad, Anzahl, speiche)." data-hint="Das Fahrrad hat zwei Räder mit je 32 Speichen. Die Regel multipliziert 2 × 32 und liefert 64.">Wie viele Speichen werden benötigt?</option>
+                <option value="bedarf(fahrrad, Anzahl, pedal)." data-hint="Die Pedale sind in der Kurbelgarnitur enthalten; Prolog verfolgt den Baugruppenpfad bis zum Fahrrad.">Wie viele Pedale hat das Fahrrad?</option>
+                <option value="bedarf(rad, Anzahl, Teil)." data-hint="Zeigt die Stückliste einer einzelnen Rad-Baugruppe.">Was gehört zu einem Rad?</option>
+                <option value="enthaelt(Baugruppe, Anzahl, Teil)." data-hint="Listet alle direkten Stücklisten-Fakten aus der Wissensbasis auf.">Alle direkten Stücklisten-Fakten</option>
+            </select>
+            <div class="hint" id="hint" aria-live="polite">Zeigt die Baugruppen und Teile, die direkt am Fahrrad montiert sind.</div>
+        </div>
+
+        <div>
+            <label for="query">Abfrage (Query) – du kannst sie bearbeiten:</label>
+            <input type="text" id="query" value="direkt_enthalten(fahrrad, Anzahl, Teil)." spellcheck="false">
+        </div>
+
+        <button id="run-query" type="button" onclick="runProlog()">Abfrage ausführen</button>
+
+        <div>
+            <label for="output">Ergebnis:</label>
+            <div id="output" class="output-box" aria-live="polite">Noch keine Abfrage ausgeführt.</div>
+        </div>
+
+        <div>
+            <label>Grafische Stückliste:</label>
+            <div id="bom-graph" class="output-box" role="img" aria-live="polite">Die Stückliste erscheint nach der ersten Abfrage.</div>
+            <p class="legend">
+                <span><span class="legend-line"></span>Baugruppenbeziehung mit Stückzahl</span>
+                <span><span class="legend-line selected"></span>Zur Abfrage passender Pfad</span>
+                <span><span class="legend-node"></span>Zur Abfrage passendes Teil</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+
+        function loadExample() {
+            const select = document.getElementById("examples");
+            const option = select.options[select.selectedIndex];
+            document.getElementById("query").value = option.value;
+            document.getElementById("hint").textContent = option.dataset.hint;
+        }
+
+        function runProlog() {
+            const output = document.getElementById("output");
+            const graph = document.getElementById("bom-graph");
+            const program = document.getElementById("knowledge-base").value;
+            const query = document.getElementById("query").value.trim();
+
+            output.textContent = "Verarbeite...";
+            graph.textContent = "Stückliste wird erstellt...";
+
+            if (!query) {
+                output.innerHTML = '<span class="error">Bitte gib eine Prolog-Abfrage ein.</span>';
+                graph.textContent = "Keine Abfrage zum Darstellen.";
+                return;
+            }
+
+            const session = pl.create();
+            session.consult(program, {
+                success: function() {
+                    session.query(query.endsWith(".") ? query : `${query}.`, {
+                        success: function() {
+                            output.textContent = "";
+                            collectAnswers(session, output, program, query, []);
+                        },
+                        error: function(error) {
+                            output.innerHTML = `<span class="error">Fehler in der Abfrage: ${escapeHtml(error)}</span>`;
+                            renderBom(program, query, [], "Fehler in der Abfrage");
+                        }
+                    });
+                },
+                error: function(error) {
+                    output.innerHTML = `<span class="error">Fehler im Programm-Code:\n${escapeHtml(error)}</span>`;
+                    graph.textContent = "Die Stückliste konnte nicht aus dem Programm gelesen werden.";
+                }
+            });
+        }
+
+        function collectAnswers(session, output, program, query, answers) {
+            session.answer({
+                success: function(answer) {
+                    const formatted = session.format_answer(answer);
+                    answers.push(formatted);
+                    output.innerHTML += `<span class="success">✔</span> ${escapeHtml(formatted)}\n`;
+                    collectAnswers(session, output, program, query, answers);
+                },
+                fail: function() {
+                    if (answers.length === 0) {
+                        output.textContent = "false.";
+                    } else {
+                        output.innerHTML += "\n(Keine weiteren Ergebnisse)";
+                    }
+                    renderBom(program, query, answers, answers.length === 0 ? "false" : "");
+                },
+                error: function(error) {
+                    output.innerHTML += `<span class="error">\nLaufzeitfehler: ${escapeHtml(error)}</span>`;
+                    renderBom(program, query, answers, "Laufzeitfehler");
+                },
+                limit: function() {
+                    output.innerHTML += "\nLimit erreicht.";
+                    renderBom(program, query, answers, "Limit erreicht");
+                }
+            });
+        }
+
+        async function renderBom(program, query, answers, status) {
+            const graph = document.getElementById("bom-graph");
+            const source = program.replace(/%.*$/gm, "");
+            const edges = Array.from(source.matchAll(/\benthaelt\s*\(\s*([a-z][A-Za-z0-9_]*)\s*,\s*(\d+)\s*,\s*([a-z][A-Za-z0-9_]*)\s*\)\s*\./g),
+                match => ({ parent: match[1], quantity: match[2], child: match[3] }));
+            const nodes = new Set();
+            edges.forEach(edge => {
+                nodes.add(edge.parent);
+                nodes.add(edge.child);
+            });
+
+            if (nodes.size === 0) {
+                graph.textContent = "Keine enthaelt/3-Fakten für die Grafik gefunden.";
+                return;
+            }
+
+            const highlights = getBomHighlights(query, answers, edges, nodes, status);
+            const nodeIds = new Map(Array.from(nodes, (node, index) => [node, `part${index}`]));
+            const lines = ["flowchart LR"];
+            nodes.forEach(node => lines.push(`    ${nodeIds.get(node)}["${node}"]`));
+            edges.forEach((edge, index) => {
+                const connector = highlights.edges.has(index) ? "==>" : "-.->";
+                lines.push(`    ${nodeIds.get(edge.parent)} ${connector}|${edge.quantity} ×| ${nodeIds.get(edge.child)}`);
+            });
+            if (highlights.nodes.size > 0) {
+                lines.push(`    class ${Array.from(highlights.nodes, node => nodeIds.get(node)).join(",")} result`);
+                lines.push("    classDef result fill:#d5f5e3,stroke:#27ae60,stroke-width:3px");
+            }
+
+            try {
+                const { svg } = await mermaid.render(`bom-${Date.now()}`, lines.join("\n"));
+                graph.innerHTML = svg;
+            } catch (error) {
+                graph.textContent = `Die Stückliste konnte nicht gerendert werden: ${error.message}`;
+            }
+        }
+
+        function getBomHighlights(query, answers, edges, nodes, status) {
+            const result = { nodes: new Set(), edges: new Set() };
+            if (status) return result;
+
+            const parsed = query.match(/^\s*([a-z][A-Za-z0-9_]*)\s*\((.*)\)\s*\.?\s*$/);
+            if (!parsed) return result;
+            const predicate = parsed[1];
+            const args = splitArguments(parsed[2]);
+            const rows = answers.map(answer => {
+                const row = {};
+                for (const match of answer.matchAll(/\b([A-Z][A-Za-z0-9_]*)\s*=\s*(\d+|[a-z][A-Za-z0-9_]*)/g)) {
+                    row[match[1]] = match[2];
+                }
+                return row;
+            });
+            const resolve = (argument, row) => /^[A-Z_]/.test(argument) ? row[argument] : argument;
+
+            if (predicate === "direkt_enthalten" || predicate === "enthaelt") {
+                rows.forEach(row => {
+                    const parent = resolve(args[0], row);
+                    const quantity = resolve(args[1], row);
+                    const child = resolve(args[2], row);
+                    const edgeIndex = edges.findIndex(edge =>
+                        edge.parent === parent && edge.child === child && (!quantity || edge.quantity === quantity));
+                    if (edgeIndex < 0) return;
+                    result.edges.add(edgeIndex);
+                    result.nodes.add(parent);
+                    result.nodes.add(child);
+                });
+            }
+
+            if (predicate === "bedarf") {
+                const root = resolve(args[0], rows[0] || {});
+                rows.forEach(row => {
+                    const part = resolve(args[2], row);
+                    if (!nodes.has(part)) return;
+                    const path = findBomPath(root, part, edges);
+                    if (!path) return;
+                    path.nodes.forEach(node => result.nodes.add(node));
+                    path.edges.forEach(index => result.edges.add(index));
+                });
+            }
+
+            return result;
+        }
+
+        function splitArguments(argumentsText) {
+            const argumentsList = [];
+            let depth = 0;
+            let start = 0;
+            for (let index = 0; index < argumentsText.length; index++) {
+                if (argumentsText[index] === "(" || argumentsText[index] === "[") depth++;
+                if (argumentsText[index] === ")" || argumentsText[index] === "]") depth--;
+                if (argumentsText[index] === "," && depth === 0) {
+                    argumentsList.push(argumentsText.slice(start, index).trim());
+                    start = index + 1;
+                }
+            }
+            argumentsList.push(argumentsText.slice(start).trim());
+            return argumentsList;
+        }
+
+        function findBomPath(root, target, edges) {
+            if (!root || !target) return null;
+            if (root === target) return { nodes: [root], edges: [] };
+            const queue = [{ node: root, path: [root], edgePath: [] }];
+            const visited = new Set([root]);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                edges.forEach((edge, index) => {
+                    if (edge.parent !== current.node || visited.has(edge.child)) return;
+                    const path = [...current.path, edge.child];
+                    const edgePath = [...current.edgePath, index];
+                    if (edge.child === target) {
+                        queue.length = 0;
+                        queue.push({ result: { nodes: path, edges: edgePath } });
+                    } else {
+                        visited.add(edge.child);
+                        queue.push({ node: edge.child, path, edgePath });
+                    }
+                });
+                if (queue[0] && queue[0].result) return queue[0].result;
+            }
+
+            return null;
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[character]);
+        }
+    </script>
+</body>
+</html>

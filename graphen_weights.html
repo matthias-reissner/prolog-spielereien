@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gewichtete Graphen mit Prolog lernen</title>
+
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea, input[type="text"] {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        textarea {
+            height: 260px;
+            resize: vertical;
+        }
+        input[type="text"] {
+            height: 40px;
+        }
+        select {
+            background: white;
+            font-size: 15px;
+        }
+        .lesson, .hint {
+            padding: 14px 16px;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .lesson {
+            background: #eaf4fb;
+            border-left: 4px solid #3498db;
+        }
+        .hint {
+            margin-top: 8px;
+            background: #f0f2f4;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .output-box {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 70px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .success {
+            color: #2ecc71;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        #graph-output {
+            overflow-x: auto;
+            background: white;
+        }
+        #graph-output svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            color: #536471;
+            font-size: 14px;
+        }
+        .legend-line {
+            display: inline-block;
+            width: 28px;
+            margin-right: 6px;
+            border-top: 2px solid #666;
+            vertical-align: middle;
+        }
+        .legend-line.selected {
+            border-top: 5px solid #e67e22;
+        }
+        .legend-node {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            border: 2px solid #27ae60;
+            border-radius: 50%;
+            background: #d5f5e3;
+            vertical-align: middle;
+        }
+        @media (max-width: 600px) {
+            body { padding: 14px; }
+            textarea { height: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Gewichtete Graphen mit Prolog lernen</h1>
+    <p>In einem gewichteten Graphen hat jede Kante eine Zahl, zum Beispiel eine Entfernung oder Kosten. Hier ist jede Kante <code>kante(Start, Ziel, Gewicht)</code> ungerichtet; das Gewicht ist eine frei gewählte Lerneinheit.</p>
+
+    <section class="lesson" aria-label="Lernhinweise">
+        <strong>So startest du:</strong> Wähle eine Beispielabfrage und klicke auf „Abfrage ausführen“.
+        Die Regel <code>nachbar/3</code> liest direkte, gewichtete Verbindungen aus.
+        <code>weg/4</code> findet einfache Pfade und summiert ihre Kantengewichte.
+        Vergleiche die gefundenen Wege und ihre Gesamtkosten.
+    </section>
+
+    <div class="container">
+        <div>
+            <label for="knowledge-base">Knoten, gewichtete Kanten und Regeln:</label>
+            <textarea id="knowledge-base" spellcheck="false">
+% Die Kantengewichte sind illustrative Einheiten, keine echten Entfernungen.
+knoten(a).
+knoten(b).
+knoten(c).
+knoten(d).
+knoten(e).
+
+% Ungerichtete Kanten mit Gewicht
+kante(a, b, 4).
+kante(a, c, 2).
+kante(b, c, 1).
+kante(b, d, 5).
+kante(c, d, 8).
+kante(c, e, 10).
+kante(d, e, 2).
+
+nachbar(X, Y, Gewicht) :- kante(X, Y, Gewicht).
+nachbar(X, Y, Gewicht) :- kante(Y, X, Gewicht).
+
+% Pfad mit aufsummiertem Gewicht; Knoten werden nicht doppelt besucht.
+weg(Start, Ziel, [Start|Rest], Gewicht) :-
+    suche_weg(Start, Ziel, [Start], Rest, Gewicht).
+
+suche_weg(Ziel, Ziel, _, [], 0).
+suche_weg(Aktuell, Ziel, Besucht, [Naechster|Rest], Gewicht) :-
+    nachbar(Aktuell, Naechster, Kantengewicht),
+    \+ besucht(Naechster, Besucht),
+    suche_weg(Naechster, Ziel, [Naechster|Besucht], Rest, Restgewicht),
+    Gewicht is Kantengewicht + Restgewicht.
+
+% Liefert jeden einfachen Weg, für den es keinen Weg mit höherem Gewicht gibt.
+am_gewichtigsten_weg(Start, Ziel, Pfad, Gewicht) :-
+    weg(Start, Ziel, Pfad, Gewicht),
+    \+ (weg(Start, Ziel, _, GroesseresGewicht), GroesseresGewicht > Gewicht).
+
+besucht(X, [X|_]).
+besucht(X, [_|Rest]) :- besucht(X, Rest).</textarea>
+        </div>
+
+        <div>
+            <label for="examples">Beispielabfrage auswählen:</label>
+            <select id="examples" onchange="loadExample()">
+                <option value="kante(X, Y, Gewicht)." data-hint="Listet jede gespeicherte Kante einmal mit ihrem Gewicht auf.">Alle gewichteten Kanten</option>
+                <option value="nachbar(a, Y, Gewicht)." data-hint="Welche Knoten sind direkt mit a verbunden und welches Gewicht hat jede Kante?">Direkte Nachbarn von a</option>
+                <option value="weg(a, e, Pfad, Gewicht)." data-hint="Prolog findet alle einfachen Wege von a nach e und summiert ihre Kantengewichte. Vergleiche die Summen, um den Weg mit dem kleinsten oder größten Gesamtgewicht zu erkennen.">Alle Wege von a nach e vergleichen</option>
+                <option value="am_gewichtigsten_weg(a, e, Pfad, Gewicht)." data-hint="Prolog sucht alle einfachen Wege von a nach e und liefert nur den Weg beziehungsweise die Wege mit dem höchsten Gesamtgewicht.">Am gewichtigsten Weg von a nach e</option>
+                <option value="weg(a, d, Pfad, Gewicht)." data-hint="Prolog listet mögliche Wege von a nach d mit den jeweiligen Gesamtgewichten auf.">Wege von a nach d</option>
+                <option value="knoten(X)." data-hint="Listet alle Knoten des Beispielgraphen auf.">Alle Knoten</option>
+            </select>
+            <div class="hint" id="hint" aria-live="polite">Listet jede gespeicherte Kante einmal mit ihrem Gewicht auf.</div>
+        </div>
+
+        <div>
+            <label for="query">Abfrage (Query) – du kannst sie bearbeiten:</label>
+            <input type="text" id="query" value="kante(X, Y, Gewicht)." spellcheck="false">
+        </div>
+
+        <button id="run-query" type="button" onclick="runProlog()">Abfrage ausführen</button>
+
+        <div>
+            <label for="output">Ergebnis:</label>
+            <div id="output" class="output-box" aria-live="polite">Noch keine Abfrage ausgeführt.</div>
+        </div>
+
+        <div>
+            <label>Graphische Darstellung:</label>
+            <div id="graph-output" class="output-box" role="img" aria-live="polite">Der Graph wird nach der ersten Abfrage angezeigt.</div>
+            <p class="legend">
+                <span><span class="legend-line"></span>Graphkante mit Gewicht</span>
+                <span><span class="legend-line selected"></span>Zur Abfrage passender Weg / Kante</span>
+                <span><span class="legend-node"></span>Passender Knoten</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+
+        function loadExample() {
+            const select = document.getElementById("examples");
+            const option = select.options[select.selectedIndex];
+            document.getElementById("query").value = option.value;
+            document.getElementById("hint").textContent = option.dataset.hint;
+        }
+
+        function runProlog() {
+            const output = document.getElementById("output");
+            const graph = document.getElementById("graph-output");
+            const program = document.getElementById("knowledge-base").value;
+            const query = document.getElementById("query").value.trim();
+
+            output.textContent = "Verarbeite...";
+            graph.textContent = "Graph wird erstellt...";
+
+            if (!query) {
+                output.innerHTML = '<span class="error">Bitte gib eine Prolog-Abfrage ein.</span>';
+                graph.textContent = "Keine Abfrage zum Darstellen.";
+                return;
+            }
+
+            const session = pl.create();
+            session.consult(program, {
+                success: function() {
+                    session.query(query.endsWith(".") ? query : `${query}.`, {
+                        success: function() {
+                            output.textContent = "";
+                            collectAnswers(session, output, program, query, []);
+                        },
+                        error: function(error) {
+                            output.innerHTML = `<span class="error">Fehler in der Abfrage: ${escapeHtml(error)}</span>`;
+                            renderGraph(program, query, [], "Fehler in der Abfrage");
+                        }
+                    });
+                },
+                error: function(error) {
+                    output.innerHTML = `<span class="error">Fehler im Programm-Code:\n${escapeHtml(error)}</span>`;
+                    graph.textContent = "Der Graph konnte nicht aus dem Programm gelesen werden.";
+                }
+            });
+        }
+
+        function collectAnswers(session, output, program, query, answers) {
+            session.answer({
+                success: function(answer) {
+                    const formatted = session.format_answer(answer);
+                    answers.push(formatted);
+                    output.innerHTML += `<span class="success">✔</span> ${escapeHtml(formatted)}\n`;
+                    collectAnswers(session, output, program, query, answers);
+                },
+                fail: function() {
+                    if (answers.length === 0) {
+                        output.textContent = "false.";
+                    } else {
+                        output.innerHTML += "\n(Keine weiteren Ergebnisse)";
+                    }
+                    renderGraph(program, query, answers, answers.length === 0 ? "false" : "");
+                },
+                error: function(error) {
+                    output.innerHTML += `<span class="error">\nLaufzeitfehler: ${escapeHtml(error)}</span>`;
+                    renderGraph(program, query, answers, "Laufzeitfehler");
+                },
+                limit: function() {
+                    output.innerHTML += "\nLimit erreicht.";
+                    renderGraph(program, query, answers, "Limit erreicht");
+                }
+            });
+        }
+
+        async function renderGraph(program, query, answers, status) {
+            const graph = document.getElementById("graph-output");
+            const source = program.replace(/%.*$/gm, "");
+            const edgeMatches = Array.from(source.matchAll(/\bkante\s*\(\s*([a-z][A-Za-z0-9_]*)\s*,\s*([a-z][A-Za-z0-9_]*)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*\./g));
+            const edges = edgeMatches.map(match => ({ from: match[1], to: match[2], weight: match[3] }));
+            const nodes = new Set(Array.from(source.matchAll(/\bknoten\s*\(\s*([a-z][A-Za-z0-9_]*)\s*\)\s*\./g), match => match[1]));
+            edges.forEach(edge => {
+                nodes.add(edge.from);
+                nodes.add(edge.to);
+            });
+
+            if (nodes.size === 0) {
+                graph.textContent = "Keine knoten/1- oder kante/3-Fakten für die Grafik gefunden.";
+                return;
+            }
+
+            const highlights = getHighlights(query, answers, edges, nodes, status);
+            const nodeIds = new Map(Array.from(nodes, (node, index) => [node, `n${index}`]));
+            const lines = ["graph LR"];
+            nodes.forEach(node => lines.push(`    ${nodeIds.get(node)}["${node}"]`));
+            edges.forEach((edge, index) => {
+                const connector = highlights.edges.has(index) ? "===" : "---";
+                lines.push(`    ${nodeIds.get(edge.from)} ${connector}|${edge.weight}| ${nodeIds.get(edge.to)}`);
+            });
+            if (highlights.nodes.size > 0) {
+                lines.push(`    class ${Array.from(highlights.nodes, node => nodeIds.get(node)).join(",")} result`);
+                lines.push("    classDef result fill:#d5f5e3,stroke:#27ae60,stroke-width:3px");
+            }
+
+            try {
+                const { svg } = await mermaid.render(`weighted-graph-${Date.now()}`, lines.join("\n"));
+                graph.innerHTML = svg;
+                const pathComparison = await renderPathComparison(query, answers, edges);
+                if (pathComparison) {
+                    graph.innerHTML += `<h3>Vergleich der gefundenen Wege</h3>${pathComparison}`;
+                }
+            } catch (error) {
+                graph.textContent = `Die Graphik konnte nicht gerendert werden: ${error.message}`;
+            }
+        }
+
+        function renderPathComparison(query, answers, edges) {
+            const parsed = query.match(/^\s*weg\s*\((.*)\)\s*\.?\s*$/);
+            if (!parsed) return "";
+
+            const args = parsed[1].split(",").map(value => value.trim());
+            if (args.length !== 4 || !/^[A-Z][A-Za-z0-9_]*$/.test(args[2]) || !/^[A-Z][A-Za-z0-9_]*$/.test(args[3])) return "";
+
+            const escapedPathVariable = args[2].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const escapedWeightVariable = args[3].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const paths = answers.map(answer => {
+                const pathMatch = answer.match(new RegExp(`\\b${escapedPathVariable}\\s*=\\s*\\[([^\\]]*)\\]`));
+                const weightMatch = answer.match(new RegExp(`\\b${escapedWeightVariable}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)`));
+                if (!pathMatch || !weightMatch) return null;
+
+                const nodes = pathMatch[1].split(",").map(node => node.trim());
+                if (nodes.length < 2 || nodes.some(node => !/^[a-z][A-Za-z0-9_]*$/.test(node))) return null;
+
+                const pathEdges = nodes.slice(0, -1).map((from, index) =>
+                    edges.find(edge =>
+                        (edge.from === from && edge.to === nodes[index + 1])
+                        || (edge.from === nodes[index + 1] && edge.to === from)));
+                if (pathEdges.some(edge => !edge)) return null;
+
+                return {
+                    nodes,
+                    weights: pathEdges.map(edge => Number(edge.weight)),
+                    total: Number(weightMatch[1])
+                };
+            }).filter(Boolean);
+
+            if (paths.length === 0) return "";
+
+            const maximum = Math.max(...paths.map(path => path.total));
+            const lines = [
+                "flowchart LR",
+                '    start["Prolog enumeriert einfache Wege von a nach e<br/>und addiert die Gewichte ihrer Kanten."]'
+            ];
+            paths.forEach((path, index) => {
+                const route = path.nodes.join(" → ");
+                const sum = path.weights.join(" + ");
+                lines.push(`    path${index}["${route}<br/>${sum} = ${path.total}"]`);
+                lines.push(`    start --> path${index}`);
+                if (path.total === maximum) lines.push(`    class path${index} maximum`);
+            });
+            const comparedTotals = paths.map(path => path.total).sort((left, right) => left - right);
+            const maximumPaths = paths.filter(path => path.total === maximum)
+                .map(path => path.nodes.join(" → ")).join(", ");
+            lines.push(`    compare["Vergleich der Summen: ${comparedTotals.join(" < ")}<br/>Maximum: ${maximum} über ${maximumPaths}"]`);
+            paths.forEach((path, index) => lines.push(`    path${index} --> compare`));
+            lines.push("    classDef maximum fill:#d5f5e3,stroke:#27ae60,stroke-width:3px");
+
+            return mermaid.render(`path-comparison-${Date.now()}`, lines.join("\n")).then(result => result.svg);
+        }
+
+        function getHighlights(query, answers, edges, nodes, status) {
+            const result = { nodes: new Set(), edges: new Set() };
+            if (status) return result;
+
+            const parsed = query.match(/^\s*([a-z][A-Za-z0-9_]*)\s*\((.*)\)\s*\.?\s*$/);
+            if (!parsed) return result;
+            const predicate = parsed[1];
+            const args = parsed[2].split(",").map(value => value.trim());
+            const bindings = answers.map(answer => {
+                const row = {};
+                for (const match of answer.matchAll(/\b([A-Z][A-Za-z0-9_]*)\s*=\s*(\[[^\]]*\]|-?\d+(?:\.\d+)?|[a-z][A-Za-z0-9_]*)/g)) {
+                    row[match[1]] = match[2];
+                }
+                return row;
+            });
+            const resolve = (argument, row) => /^[A-Z_]/.test(argument) ? row[argument] : argument;
+
+            if (predicate === "knoten") {
+                bindings.forEach(row => {
+                    const node = resolve(args[0], row);
+                    if (nodes.has(node)) result.nodes.add(node);
+                });
+            }
+
+            if (predicate === "kante" || predicate === "nachbar") {
+                bindings.forEach(row => {
+                    const from = resolve(args[0], row);
+                    const to = resolve(args[1], row);
+                    const weight = resolve(args[2], row);
+                    const edgeIndex = edges.findIndex(edge =>
+                        ((edge.from === from && edge.to === to) || (edge.from === to && edge.to === from))
+                        && (!weight || edge.weight === weight));
+                    if (edgeIndex < 0) return;
+                    result.edges.add(edgeIndex);
+                    result.nodes.add(edges[edgeIndex].from);
+                    result.nodes.add(edges[edgeIndex].to);
+                });
+            }
+
+            if (predicate === "weg" || predicate === "am_gewichtigsten_weg") {
+                bindings.forEach(row => {
+                    const path = resolve(args[2], row);
+                    if (!path) return;
+                    const pathNodes = Array.from(path.matchAll(/[a-z][A-Za-z0-9_]*/g), match => match[0]);
+                    pathNodes.forEach(node => result.nodes.add(node));
+                    for (let index = 0; index < pathNodes.length - 1; index++) {
+                        const edgeIndex = edges.findIndex(edge =>
+                            (edge.from === pathNodes[index] && edge.to === pathNodes[index + 1])
+                            || (edge.from === pathNodes[index + 1] && edge.to === pathNodes[index]));
+                        if (edgeIndex >= 0) result.edges.add(edgeIndex);
+                    }
+                });
+            }
+
+            return result;
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[character]);
+        }
+    </script>
+</body>
+</html>
