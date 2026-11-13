@@ -399,11 +399,15 @@ action_creates_mill(Board, Player, Reserve, Action) :-
 opponent(white, black).
 opponent(black, white).
 
+has_mill_threat(Board, Player, Reserve) :-
+    action_creates_mill(Board, Player, Reserve, _),
+    !.
+
 blocks_mill(Board, Player, Reserve, OpponentReserve, Action) :-
     opponent(Player, Opponent),
+    has_mill_threat(Board, Opponent, OpponentReserve),
     legal_action(Board, Player, Reserve, Action),
     action_result(Board, Player, Action, After, _),
-    action_creates_mill(Board, Opponent, OpponentReserve, _),
     \+ action_creates_mill(After, Opponent, OpponentReserve, _).
 `;
 
@@ -415,6 +419,8 @@ blocks_mill(Board, Player, Reserve, OpponentReserve, Action) :-
             id,
             BOARD_EDGES.reduce((degree, edge) => degree + Number(edge.includes(id)), 0)
         ]));
+        const SEARCH_DEPTH = 2;
+        const MATE_SCORE = 100000;
 
         const state = Vue.reactive({
             board: Object.fromEntries(POSITIONS.map(({ id }) => [id, "empty"])),
@@ -554,13 +560,120 @@ blocks_mill(Board, Player, Reserve, OpponentReserve, Action) :-
             return nextBoard;
         }
 
-        function chooseStrategicAction(actions, board) {
-            const ranked = actions.map(action => ({
+        function positionIsInMill(board, player, position) {
+            return MILL_LINES.some(line => line.includes(position) && line.every(point => board[point] === player));
+        }
+
+        function legalSearchCaptures(board, player) {
+            const pieces = POSITIONS.filter(({ id }) => board[id] === player).map(({ id }) => id);
+            const unprotected = pieces.filter(position => !positionIsInMill(board, player, position));
+            return unprotected.length > 0 ? unprotected : pieces;
+        }
+
+        function makeSearchAction(board, reserves, action, player) {
+            const nextBoard = simulateAction(board, action, player);
+            const nextReserves = { ...reserves };
+            if (action.type === "set") nextReserves[player] -= 1;
+
+            const destination = action.type === "set" ? action.positions[0] : action.positions[1];
+            const createdMill = MILL_LINES.some(line =>
+                line.includes(destination)
+                    && line.every(position => nextBoard[position] === player)
+                    && !line.every(position => board[position] === player));
+            if (createdMill) {
+                const opponent = otherPlayer(player);
+                const captures = legalSearchCaptures(nextBoard, opponent);
+                if (captures.length > 0) {
+                    const rankedCaptures = captures.map(position => ({
+                        position,
+                        score: evaluateBoard({ ...nextBoard, [position]: "empty" })
+                    }));
+                    const bestCaptureScore = player === "black"
+                        ? Math.max(...rankedCaptures.map(candidate => candidate.score))
+                        : Math.min(...rankedCaptures.map(candidate => candidate.score));
+                    const bestCapture = chooseRandom(rankedCaptures
+                        .filter(candidate => candidate.score === bestCaptureScore))["position"];
+                    nextBoard[bestCapture] = "empty";
+                }
+            }
+            return { board: nextBoard, reserves: nextReserves };
+        }
+
+        function getSearchActions(board, reserves, player) {
+            if (reserves[player] > 0) {
+                return POSITIONS.filter(({ id }) => board[id] === "empty")
+                    .map(({ id }) => ({ type: "set", positions: [id] }));
+            }
+
+            const pieces = POSITIONS.filter(({ id }) => board[id] === player).map(({ id }) => id);
+            if (pieces.length < 3) return [];
+            const empty = POSITIONS.filter(({ id }) => board[id] === "empty").map(({ id }) => id);
+            if (pieces.length === 3) {
+                return pieces.flatMap(from => empty.map(to => ({ type: "fly", positions: [from, to] })));
+            }
+
+            const actions = [];
+            BOARD_EDGES.forEach(([first, second]) => {
+                if (board[first] === player && board[second] === "empty") {
+                    actions.push({ type: "move", positions: [first, second] });
+                }
+                if (board[second] === player && board[first] === "empty") {
+                    actions.push({ type: "move", positions: [second, first] });
+                }
+            });
+            return actions;
+        }
+
+        function minimax(board, reserves, player, depth, alpha, beta) {
+            if (reserves[player] === 0 && countPiecesOnBoard(board, player) < 3) {
+                return player === "black" ? -MATE_SCORE - depth : MATE_SCORE + depth;
+            }
+            if (depth === 0) return evaluateBoard(board);
+
+            const actions = getSearchActions(board, reserves, player);
+            if (actions.length === 0) {
+                return player === "black" ? -MATE_SCORE - depth : MATE_SCORE + depth;
+            }
+            const orderedActions = actions.map(action => ({
                 action,
-                score: evaluateBoard(simulateAction(board, action, "black"))
-            }));
-            const bestScore = Math.max(...ranked.map(candidate => candidate.score));
-            return chooseRandom(ranked.filter(candidate => candidate.score === bestScore).map(candidate => candidate.action));
+                score: evaluateBoard(simulateAction(board, action, player))
+            })).sort((first, second) =>
+                player === "black" ? second.score - first.score : first.score - second.score);
+
+            const maximizing = player === "black";
+            let bestScore = maximizing ? -Infinity : Infinity;
+            for (const { action } of orderedActions) {
+                const next = makeSearchAction(board, reserves, action, player);
+                const score = minimax(next.board, next.reserves, otherPlayer(player), depth - 1, alpha, beta);
+                if (maximizing) {
+                    bestScore = Math.max(bestScore, score);
+                    alpha = Math.max(alpha, bestScore);
+                } else {
+                    bestScore = Math.min(bestScore, score);
+                    beta = Math.min(beta, bestScore);
+                }
+                if (beta <= alpha) break;
+            }
+            return bestScore;
+        }
+
+        function chooseStrategicAction(actions, board, reserves) {
+            let bestScore = -Infinity;
+            let bestActions = [];
+            let alpha = -Infinity;
+            const searchDepth = reserves.black > 0 ? 1 : SEARCH_DEPTH;
+            for (const action of actions) {
+                const next = makeSearchAction(board, reserves, action, "black");
+                const score = minimax(next.board, next.reserves, "white", searchDepth, alpha, Infinity);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestActions = [action];
+                } else if (score === bestScore) {
+                    bestActions.push(action);
+                }
+                alpha = Math.max(alpha, bestScore);
+            }
+            return chooseRandom(bestActions);
         }
 
         function chooseStrategicCapture(positions, board) {
@@ -671,7 +784,7 @@ blocks_mill(Board, Player, Reserve, OpponentReserve, Action) :-
                     return;
                 }
 
-                const action = chooseStrategicAction(actions, state.board);
+                const action = chooseStrategicAction(actions, state.board, state.reserve);
                 const before = { ...state.board };
                 const destination = action.type === "set" ? action.positions[0] : action.positions[1];
                 if (action.type === "set") {
