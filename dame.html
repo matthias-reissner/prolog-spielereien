@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dame mit Tau Prolog</title>
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #263746;
+            --muted: #536471;
+            --blue: #3498db;
+            --blue-dark: #2478ad;
+            --paper: #ffffff;
+            --page: #f4f6f9;
+            --border: #d5dce2;
+            --board-dark: #587365;
+            --board-light: #edf0e7;
+        }
+        * { box-sizing: border-box; }
+        body {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--page);
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        h1 {
+            margin: 10px 0 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--blue);
+            color: var(--ink);
+        }
+        h2 { color: var(--ink); }
+        .top-link { color: var(--blue-dark); }
+        .lesson, .panel { border-radius: 4px; line-height: 1.5; }
+        .lesson {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--blue);
+            background: #eaf4fb;
+        }
+        .game-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 260px;
+            align-items: start;
+            gap: 22px;
+        }
+        .board-column { min-width: 0; }
+        .checkers-board {
+            display: grid;
+            width: min(100%, 640px);
+            aspect-ratio: 1;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            grid-template-rows: repeat(8, minmax(0, 1fr));
+            overflow: hidden;
+            border: 1px solid #87958a;
+            border-radius: 4px;
+            background: var(--board-light);
+        }
+        .square {
+            position: relative;
+            display: grid;
+            min-width: 0;
+            min-height: 0;
+            place-items: center;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+        }
+        .square.light { background: var(--board-light); }
+        .square.dark { background: var(--board-dark); }
+        button.square { cursor: pointer; }
+        button.square:focus-visible { z-index: 1; outline: 3px solid #f0ad4e; outline-offset: -4px; }
+        button.square:hover:not(:disabled) { filter: brightness(1.08); }
+        button.square:disabled { cursor: default; }
+        button.square.selected::before,
+        button.square.target::before {
+            position: absolute;
+            inset: 5%;
+            border: 3px solid #f0ad4e;
+            border-radius: 2px;
+            content: "";
+            pointer-events: none;
+        }
+        button.square.target::before { border-color: #9ee0a4; }
+        .piece {
+            z-index: 1;
+            display: grid;
+            width: 72%;
+            aspect-ratio: 1;
+            place-items: center;
+            border: 3px solid #34434c;
+            border-radius: 50%;
+            box-shadow: inset 0 2px 3px #ffffff80, 0 2px 3px #18252b55;
+            pointer-events: none;
+            font-size: 15px;
+            font-weight: 800;
+        }
+        .piece.white { border-color: #9a7a3d; background: #f8edcf; color: #715622; }
+        .piece.black { border-color: #152431; background: #263746; color: #f2d986; }
+        .piece.king { box-shadow: inset 0 0 0 3px #ffffff66, 0 2px 3px #18252b55; }
+        .panel {
+            padding: 16px;
+            border: 1px solid var(--border);
+            background: var(--paper);
+        }
+        .panel h2 { margin: 0 0 12px; font-size: 20px; }
+        .mode-select {
+            width: 100%;
+            margin: 0 0 12px;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+        }
+        .turn-indicator {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-left: 4px solid var(--blue);
+            background: #eaf4fb;
+            font-weight: 700;
+        }
+        .turn-indicator[data-player="white"] { border-color: #c69b48; }
+        .turn-indicator[data-player="black"] { border-color: #263746; }
+        .player-count {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 8px 0;
+            padding: 9px 0;
+            border-bottom: 1px solid #e3e8ec;
+        }
+        .player-name { font-weight: 700; }
+        .player-name.white { color: #8c6b2d; }
+        .player-name.black { color: #263746; }
+        .count-detail { color: var(--muted); font-size: 14px; text-align: right; }
+        .panel p { color: var(--muted); }
+        button.action {
+            width: 100%;
+            margin-top: 12px;
+            padding: 11px 16px;
+            border: 0;
+            border-radius: 4px;
+            background: var(--blue);
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        button.action:hover { background: var(--blue-dark); }
+        button.action:disabled { cursor: default; opacity: 0.65; }
+        button.action:focus-visible { outline: 3px solid #1d5e87; outline-offset: 2px; }
+        .output-box {
+            min-height: 56px;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 4px;
+            background: var(--ink);
+            color: #ecf0f1;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+        details { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 12px; }
+        summary { color: var(--blue-dark); cursor: pointer; font-weight: 700; }
+        pre {
+            overflow-x: auto;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--ink);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            margin: 10px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+        .legend-piece {
+            width: 16px;
+            aspect-ratio: 1;
+            border: 2px solid #9a7a3d;
+            border-radius: 50%;
+            background: #f8edcf;
+        }
+        .legend-piece.black { border-color: #152431; background: #263746; }
+        @media (max-width: 760px) {
+            body { padding: 14px; }
+            .game-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            .checkers-board { margin: 0 auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <a class="top-link" href="index.html">Zur Übersicht</a>
+    <h1>Dame mit Tau Prolog</h1>
+    <p class="lesson"><strong>8 × 8, je 12 Steine:</strong> Steine ziehen vorwärts, schlagen dürfen sie diagonal in beide Richtungen. Damen ziehen und schlagen ein Feld diagonal. Schlagen ist Pflicht; nach einem Sprung musst du mit derselben Figur weiterschlagen, wenn es möglich ist. Eine Figur, die die letzte Reihe erreicht, wird zur Dame und beendet damit ihren Zug.</p>
+
+    <main class="game-layout">
+        <section class="board-column" aria-label="Dame-Spielbrett">
+            <div class="checkers-board" role="group" aria-label="Dame-Spielbrett mit 64 Feldern">
+                <template v-for="square in squares" :key="square.id">
+                    <button
+                        v-if="square.playable"
+                        type="button"
+                        :class="squareClasses(square.id)"
+                        :style="{ gridColumn: String(square.col + 1), gridRow: String(square.row + 1) }"
+                        :data-square="square.id"
+                        :aria-label="squareLabel(square.id)"
+                        :disabled="state.gameOver"
+                        @click="clickSquare(square.id)">
+                        <span v-if="state.board[square.id] !== 'empty'" :class="pieceClasses(state.board[square.id])">{{ pieceMark(state.board[square.id]) }}</span>
+                    </button>
+                    <div v-else class="square light" :style="{ gridColumn: String(square.col + 1), gridRow: String(square.row + 1) }" aria-hidden="true"></div>
+                </template>
+            </div>
+            <p class="legend" aria-label="Legende">
+                <span class="legend-item"><span class="legend-piece"></span>Weiß</span>
+                <span class="legend-item"><span class="legend-piece black"></span>Schwarz</span>
+                <span class="legend-item">D = Dame</span>
+            </p>
+        </section>
+
+        <aside class="panel" aria-label="Spielstand und Bedienung">
+            <h2>Spielstand</h2>
+            <label for="game-mode">Gegner</label>
+            <select class="mode-select" id="game-mode" v-model="state.mode" :disabled="state.busy" @change="resetGame">
+                <option value="computer">Mensch gegen Computer</option>
+                <option value="human">Mensch gegen Mensch</option>
+            </select>
+            <p v-if="state.mode === 'computer'">Du spielst Weiß, der Computer Schwarz.</p>
+            <p class="turn-indicator" :data-player="state.current" role="status" aria-live="polite">{{ turnText }}</p>
+            <div class="player-count">
+                <span class="player-name white">Weiß</span>
+                <span class="count-detail">{{ playerStats("white") }}</span>
+            </div>
+            <div class="player-count">
+                <span class="player-name black">Schwarz</span>
+                <span class="count-detail">{{ playerStats("black") }}</span>
+            </div>
+            <p aria-live="polite">{{ state.message }}</p>
+            <button class="action" type="button" :disabled="state.busy" @click="resetGame">Neues Spiel</button>
+            <div class="output-box" aria-live="polite">{{ state.prologOutput }}</div>
+        </aside>
+    </main>
+
+    <details>
+        <summary>Prolog-Regeln ansehen</summary>
+        <pre>{{ prologRules.trim() }}</pre>
+    </details>
+</div>
+
+<script>
+    const SQUARES = Array.from({ length: 64 }, (_, index) => {
+        const row = Math.floor(index / 8);
+        const col = index % 8;
+        return {
+            id: `p${index}`,
+            row,
+            col,
+            playable: (row + col) % 2 === 1,
+            label: `${"abcdefgh"[col]}${8 - row}`
+        };
+    });
+    const PLAYABLE_SQUARES = SQUARES.filter(square => square.playable);
+    const SQUARE_BY_ID = Object.fromEntries(SQUARES.map(square => [square.id, square]));
+    const SQUARE_FACTS = PLAYABLE_SQUARES.map(({ id, row, col }) => `square(${id},${row},${col}).`).join("\n");
+    const PROLOG_RULES = String.raw`
+${SQUARE_FACTS}
+
+piece_owner(white_man, white).
+piece_owner(white_king, white).
+piece_owner(black_man, black).
+piece_owner(black_king, black).
+opponent(white, black).
+opponent(black, white).
+
+move_delta(white_man, -1, -1).
+move_delta(white_man, -1, 1).
+move_delta(black_man, 1, -1).
+move_delta(black_man, 1, 1).
+move_delta(white_king, -1, -1).
+move_delta(white_king, -1, 1).
+move_delta(white_king, 1, -1).
+move_delta(white_king, 1, 1).
+move_delta(black_king, -1, -1).
+move_delta(black_king, -1, 1).
+move_delta(black_king, 1, -1).
+move_delta(black_king, 1, 1).
+
+capture_delta(white_man, -1, -1).
+capture_delta(white_man, -1, 1).
+capture_delta(white_man, 1, -1).
+capture_delta(white_man, 1, 1).
+capture_delta(black_man, -1, -1).
+capture_delta(black_man, -1, 1).
+capture_delta(black_man, 1, -1).
+capture_delta(black_man, 1, 1).
+capture_delta(white_king, -1, -1).
+capture_delta(white_king, -1, 1).
+capture_delta(white_king, 1, -1).
+capture_delta(white_king, 1, 1).
+capture_delta(black_king, -1, -1).
+capture_delta(black_king, -1, 1).
+capture_delta(black_king, 1, -1).
+capture_delta(black_king, 1, 1).
+
+board_has(Piece, [Piece|_]).
+board_has(Piece, [_|Rest]) :- board_has(Piece, Rest).
+
+simple_move(Board, Player, From, To) :-
+    board_has(pos(From, Piece), Board),
+    piece_owner(Piece, Player),
+    move_delta(Piece, RowDelta, ColDelta),
+    square(From, Row, Col),
+    NextRow is Row + RowDelta,
+    NextCol is Col + ColDelta,
+    square(To, NextRow, NextCol),
+    board_has(pos(To, empty), Board).
+
+capture_action(Board, Player, From, To, Captured) :-
+    board_has(pos(From, Piece), Board),
+    piece_owner(Piece, Player),
+    capture_delta(Piece, RowDelta, ColDelta),
+    square(From, Row, Col),
+    CapturedRow is Row + RowDelta,
+    CapturedCol is Col + ColDelta,
+    square(Captured, CapturedRow, CapturedCol),
+    board_has(pos(Captured, Victim), Board),
+    piece_owner(Victim, OtherPlayer),
+    opponent(Player, OtherPlayer),
+    LandingRow is Row + 2 * RowDelta,
+    LandingCol is Col + 2 * ColDelta,
+    square(To, LandingRow, LandingCol),
+    board_has(pos(To, empty), Board).
+
+has_capture(Board, Player) :- capture_action(Board, Player, _, _, _).
+
+legal_action(Board, Player, any, action(From, To, Captured)) :-
+    capture_action(Board, Player, From, To, Captured).
+legal_action(Board, Player, any, action(From, To, none)) :-
+    \+ has_capture(Board, Player),
+    simple_move(Board, Player, From, To).
+legal_action(Board, Player, From, action(From, To, Captured)) :-
+    From \= any,
+    capture_action(Board, Player, From, To, Captured).
+`;
+
+    const INITIAL_BOARD = Object.fromEntries(PLAYABLE_SQUARES.map(square => [
+        square.id,
+        square.row < 3 ? "black_man" : square.row > 4 ? "white_man" : "empty"
+    ]));
+    const state = Vue.reactive({
+        board: { ...INITIAL_BOARD },
+        mode: "computer",
+        current: "white",
+        selected: null,
+        continuation: null,
+        possibleActions: [],
+        gameOver: false,
+        busy: false,
+        thinking: false,
+        message: "Wähle einen eigenen Stein und danach ein Zielfeld.",
+        prologOutput: "Prolog prüft die möglichen Züge."
+    });
+
+    function playerName(player) {
+        return player === "white" ? "Weiß" : "Schwarz";
+    }
+
+    function playerOf(piece) {
+        return piece.startsWith("white_") ? "white" : piece.startsWith("black_") ? "black" : null;
+    }
+
+    function boardTerm(board) {
+        return `[${PLAYABLE_SQUARES.map(({ id }) => `pos(${id},${board[id]})`).join(",")}]`;
+    }
+
+    function countPieces(player) {
+        return PLAYABLE_SQUARES.reduce((count, { id }) => count + (playerOf(state.board[id]) === player ? 1 : 0), 0);
+    }
+
+    function prologSolutions(goal) {
+        return new Promise((resolve, reject) => {
+            const session = pl.create();
+            const answers = [];
+            const nextAnswer = () => session.answer({
+                success: function(answer) {
+                    answers.push(session.format_answer(answer));
+                    nextAnswer();
+                },
+                fail: function() { resolve(answers); },
+                error: function(error) { reject(error); }
+            });
+
+            session.consult(PROLOG_RULES, {
+                success: function() {
+                    session.query(`${goal}.`, {
+                        success: nextAnswer,
+                        error: function(error) { reject(error); }
+                    });
+                },
+                error: function(error) { reject(error); }
+            });
+        });
+    }
+
+    function parseActions(answers) {
+        return answers.map(answer => {
+            const match = answer.match(/\bAction\s*=\s*action\((p\d+),(p\d+),([^()]*)\)/);
+            if (!match) return null;
+            return { from: match[1], to: match[2], captured: match[3] };
+        }).filter(Boolean);
+    }
+
+    async function getLegalActions(player, forcedFrom = "any") {
+        const goal = `legal_action(${boardTerm(state.board)},${player},${forcedFrom},Action)`;
+        const actions = parseActions(await prologSolutions(goal));
+        state.prologOutput = `${goal}.\n${actions.length} legale Aktion(en).`;
+        return actions;
+    }
+
+    function setMessage(message) {
+        state.message = message;
+    }
+
+    function resetGame() {
+        state.board = { ...INITIAL_BOARD };
+        state.current = "white";
+        state.selected = null;
+        state.continuation = null;
+        state.possibleActions = [];
+        state.gameOver = false;
+        state.busy = false;
+        state.thinking = false;
+        setMessage("Wähle einen eigenen Stein und danach ein Zielfeld.");
+        state.prologOutput = "Prolog prüft die möglichen Züge.";
+    }
+
+    function applyAction(action, player) {
+        const piece = state.board[action.from];
+        state.board[action.from] = "empty";
+        if (action.captured !== "none") state.board[action.captured] = "empty";
+        const destination = SQUARE_BY_ID[action.to];
+        const promotes = piece.endsWith("_man") &&
+            ((player === "white" && destination.row === 0) || (player === "black" && destination.row === 7));
+        state.board[action.to] = promotes ? `${player}_king` : piece;
+        return promotes;
+    }
+
+    function scoreAction(action, player) {
+        const piece = state.board[action.from];
+        const destination = SQUARE_BY_ID[action.to];
+        const promotes = piece.endsWith("_man") &&
+            ((player === "white" && destination.row === 0) || (player === "black" && destination.row === 7));
+        const captures = action.captured === "none" ? 0 : 10;
+        const promotion = promotes ? 5 : 0;
+        const center = destination.row >= 2 && destination.row <= 5 && destination.col >= 2 && destination.col <= 5 ? 1 : 0;
+        return captures + promotion + center + Math.random() * 0.25;
+    }
+
+    function chooseComputerAction(actions) {
+        return actions.reduce((best, action) =>
+            scoreAction(action, "black") > scoreAction(best, "black") ? action : best
+        );
+    }
+
+    async function finishTurn() {
+        state.current = state.current === "white" ? "black" : "white";
+        state.selected = null;
+        state.continuation = null;
+        state.possibleActions = [];
+        const actions = await getLegalActions(state.current);
+        if (actions.length === 0) {
+            state.gameOver = true;
+            state.message = `${playerName(state.current === "white" ? "black" : "white")} gewinnt: ${playerName(state.current)} hat keinen legalen Zug.`;
+            return;
+        }
+        state.message = `${playerName(state.current)} ist am Zug.`;
+        if (state.mode === "computer" && state.current === "black") await computerTurn();
+    }
+
+    async function computerTurn() {
+        if (state.gameOver || state.current !== "black") return;
+        state.busy = true;
+        state.thinking = true;
+        state.message = "Der Computer überlegt ...";
+        try {
+            await new Promise(resolve => setTimeout(resolve, 250));
+            while (true) {
+                const actions = await getLegalActions("black", state.continuation || "any");
+                if (actions.length === 0) {
+                    if (state.continuation) {
+                        state.continuation = null;
+                        break;
+                    }
+                    state.gameOver = true;
+                    state.message = "Weiß gewinnt: Der Computer hat keinen legalen Zug.";
+                    return;
+                }
+                const action = chooseComputerAction(actions);
+                const promoted = applyAction(action, "black");
+                if (action.captured !== "none" && !promoted) {
+                    const followUps = await getLegalActions("black", action.to);
+                    if (followUps.length > 0) {
+                        state.continuation = action.to;
+                        state.message = "Der Computer schlägt weiter ...";
+                        continue;
+                    }
+                }
+                state.continuation = null;
+                break;
+            }
+            await finishTurn();
+        } catch (error) {
+            state.message = `Prolog-Fehler: ${error.message || error}`;
+        } finally {
+            state.thinking = false;
+            state.busy = false;
+        }
+    }
+
+    async function clickSquare(squareId) {
+        if (state.busy || state.gameOver) return;
+        if (state.mode === "computer" && state.current === "black") return;
+        state.busy = true;
+        try {
+            const piece = state.board[squareId];
+            const player = state.current;
+            if (state.selected === squareId && !state.continuation) {
+                state.selected = null;
+                state.possibleActions = [];
+                setMessage("Wähle einen eigenen Stein und danach ein Zielfeld.");
+                return;
+            }
+            if (playerOf(piece) === player && (!state.continuation || squareId === state.continuation)) {
+                const actions = await getLegalActions(player, state.continuation || "any");
+                const available = actions.filter(action => action.from === squareId);
+                if (available.length === 0) {
+                    setMessage(actions.some(action => action.captured !== "none")
+                        ? "Schlagen ist Pflicht. Wähle eine Figur mit möglichem Sprung."
+                        : "Diese Figur hat keinen legalen Zug.");
+                    return;
+                }
+                state.selected = squareId;
+                state.possibleActions = available;
+                setMessage(state.continuation
+                    ? "Schlage mit derselben Figur weiter."
+                    : available.some(action => action.captured !== "none")
+                        ? "Schlagen ist Pflicht. Wähle ein Zielfeld."
+                        : "Wähle ein diagonal benachbartes Zielfeld.");
+                return;
+            }
+
+            const action = state.possibleActions.find(candidate => candidate.to === squareId);
+            if (!action) {
+                setMessage("Dieses Feld ist für die ausgewählte Figur kein legaler Zug.");
+                return;
+            }
+            const playerPiece = state.board[action.from];
+            const promoted = applyAction(action, player);
+            if (action.captured !== "none" && !promoted) {
+                const followUps = await getLegalActions(player, action.to);
+                if (followUps.length > 0) {
+                    state.continuation = action.to;
+                    state.selected = action.to;
+                    state.possibleActions = followUps;
+                    setMessage("Du musst mit derselben Figur weiterschlagen.");
+                    return;
+                }
+            }
+            state.continuation = null;
+            state.selected = null;
+            state.possibleActions = [];
+            if (promoted) state.message = `${playerName(player)} hat eine Dame erhalten.`;
+            await finishTurn();
+            if (playerPiece === "empty") throw new Error("Auf dem Startfeld stand keine Figur.");
+        } catch (error) {
+            setMessage(`Prolog-Fehler: ${error.message || error}`);
+        } finally {
+            state.busy = false;
+        }
+    }
+
+    const app = Vue.createApp({
+        data() {
+            return { squares: SQUARES, prologRules: PROLOG_RULES, state };
+        },
+        computed: {
+            turnText() {
+                if (state.thinking) return "Der Computer überlegt ...";
+                return state.gameOver ? state.message : `${playerName(state.current)} ist am Zug`;
+            }
+        },
+        methods: {
+            clickSquare,
+            resetGame,
+            squareClasses(id) {
+                return {
+                    square: true,
+                    dark: true,
+                    selected: state.selected === id,
+                    target: state.possibleActions.some(action => action.to === id)
+                };
+            },
+            squareLabel(id) {
+                const square = SQUARE_BY_ID[id];
+                const piece = state.board[id];
+                const owner = playerOf(piece);
+                if (!owner) return `Feld ${square.label}, frei`;
+                return `Feld ${square.label}, ${playerName(owner)}${piece.endsWith("_king") ? ", Dame" : "er Stein"}`;
+            },
+            pieceClasses(piece) {
+                return ["piece", playerOf(piece), { king: piece.endsWith("_king") }];
+            },
+            pieceMark(piece) {
+                return piece.endsWith("_king") ? "D" : "";
+            },
+            playerStats(player) {
+                const onBoard = countPieces(player);
+                const captured = 12 - onBoard;
+                return `${onBoard} auf dem Brett · ${captured} geschlagen`;
+            }
+        },
+        mounted() {
+            if (typeof pl === "undefined") setMessage("Tau Prolog konnte nicht geladen werden. Prüfe deine Internetverbindung.");
+        }
+    });
+    app.mount("#app");
+</script>
+</body>
+</html>
