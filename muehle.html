@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mühle mit Tau Prolog</title>
+    <script src="https://unpkg.com/tau-prolog@0.3.4/modules/core.js"></script>
+    <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #263746;
+            --muted: #536471;
+            --blue: #3498db;
+            --blue-dark: #2478ad;
+            --paper: #ffffff;
+            --page: #f4f6f9;
+            --line: #9aa8b2;
+            --border: #d5dce2;
+            --green: #25835b;
+            --red: #c94b43;
+        }
+        * { box-sizing: border-box; }
+        body {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--page);
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        h1 {
+            margin: 10px 0 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--blue);
+            color: var(--ink);
+        }
+        h2, h3 { color: var(--ink); }
+        .top-link { color: var(--blue-dark); }
+        .lesson, .panel {
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .lesson {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--blue);
+            background: #eaf4fb;
+        }
+        .game-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 260px;
+            align-items: start;
+            gap: 22px;
+        }
+        .board-column { min-width: 0; }
+        .morris-board {
+            position: relative;
+            display: grid;
+            width: min(100%, 640px);
+            aspect-ratio: 1;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-rows: repeat(7, minmax(0, 1fr));
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--paper);
+        }
+        .board-lines {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .board-lines path {
+            fill: none;
+            stroke: var(--line);
+            stroke-width: 3;
+            vector-effect: non-scaling-stroke;
+        }
+        .point {
+            z-index: 1;
+            place-self: center;
+            display: grid;
+            width: clamp(32px, 5.2vw, 46px);
+            aspect-ratio: 1;
+            place-items: center;
+            padding: 0;
+            border: 3px solid #536471;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            transition: transform 120ms ease, box-shadow 120ms ease;
+        }
+        .point:hover:not(:disabled) { transform: scale(1.09); }
+        .point:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+        .point.white-piece {
+            border-color: #9a7a3d;
+            background: #f8edcf;
+            box-shadow: inset 0 0 0 3px #fffaf0;
+        }
+        .point.black-piece {
+            border-color: #152431;
+            background: #263746;
+            box-shadow: inset 0 0 0 3px #52616c;
+        }
+        .point.selected {
+            box-shadow: 0 0 0 5px #f0ad4e;
+        }
+        .point:disabled { cursor: default; }
+        .panel {
+            padding: 16px;
+            border: 1px solid var(--border);
+            background: var(--paper);
+        }
+        .panel h2 { margin: 0 0 12px; font-size: 20px; }
+        .mode-select {
+            width: 100%;
+            margin: 0 0 12px;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+        }
+        .turn-indicator {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-left: 4px solid var(--blue);
+            background: #eaf4fb;
+            font-weight: 700;
+        }
+        .turn-indicator[data-player="white"] { border-color: #c69b48; }
+        .turn-indicator[data-player="black"] { border-color: #263746; }
+        .player-count {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 8px 0;
+            padding: 9px 0;
+            border-bottom: 1px solid #e3e8ec;
+        }
+        .player-name { font-weight: 700; }
+        .player-name.white { color: #8c6b2d; }
+        .player-name.black { color: #263746; }
+        .count-detail { color: var(--muted); font-size: 14px; text-align: right; }
+        .panel p { color: var(--muted); }
+        button.action {
+            width: 100%;
+            margin-top: 12px;
+            padding: 11px 16px;
+            border: 0;
+            border-radius: 4px;
+            background: var(--blue);
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        button.action:hover { background: var(--blue-dark); }
+        button.action:focus-visible { outline: 3px solid #1d5e87; outline-offset: 2px; }
+        .output-box {
+            min-height: 56px;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 4px;
+            background: var(--ink);
+            color: #ecf0f1;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+        .key { color: var(--green); }
+        details {
+            margin-top: 20px;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+        summary { color: var(--blue-dark); cursor: pointer; font-weight: 700; }
+        pre {
+            overflow-x: auto;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--ink);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            margin: 10px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+        .legend-stone {
+            width: 16px;
+            aspect-ratio: 1;
+            border: 2px solid #9a7a3d;
+            border-radius: 50%;
+            background: #f8edcf;
+        }
+        .legend-stone.black { border-color: #152431; background: #263746; }
+        @media (max-width: 760px) {
+            body { padding: 14px; }
+            .game-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            .morris-board { margin: 0 auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <a class="top-link" href="index.html">Zur Übersicht</a>
+    <h1>Mühle mit Tau Prolog</h1>
+    <p class="lesson"><strong>Neun Steine, drei in einer Reihe:</strong> Setze abwechselnd deine Steine. Danach ziehst du auf benachbarte freie Punkte. Wer eine Mühle schließt, darf einen gegnerischen Stein entfernen. Sind nur noch drei Steine übrig, darf dieser Spieler zu einem beliebigen freien Punkt springen.</p>
+
+    <main class="game-layout">
+        <section class="board-column" aria-label="Mühle-Spielbrett">
+            <div class="morris-board" id="board" role="group" aria-label="Mühle-Spielbrett mit 24 Punkten">
+                <svg class="board-lines" viewBox="0 0 700 700" aria-hidden="true">
+                    <path d="M50 50 H650 V650 H50 Z M150 150 H550 V550 H150 Z M250 250 H450 V450 H250 Z M350 50 V150 M350 150 V250 M650 350 H550 M550 350 H450 M350 450 V550 M350 550 V650 M50 350 H150 M150 350 H250" />
+                </svg>
+                <button
+                    v-for="spot in positions"
+                    :key="spot.id"
+                    type="button"
+                    :class="pointClasses(spot.id)"
+                    :style="{ gridColumn: String(spot.x + 1), gridRow: String(spot.y + 1) }"
+                    :data-position="spot.id"
+                    :aria-label="pointLabel(spot.id)"
+                    :title="pointTitle(spot.id)"
+                    :disabled="state.gameOver"
+                    @click="handlePointClick(spot.id)"></button>
+            </div>
+            <p class="legend" aria-label="Legende">
+                <span class="legend-item"><span class="legend-stone"></span>Weiß</span>
+                <span class="legend-item"><span class="legend-stone black"></span>Schwarz</span>
+            </p>
+        </section>
+
+        <aside class="panel" aria-label="Spielstand und Bedienung">
+            <h2>Spielstand</h2>
+            <label for="game-mode">Gegner</label>
+            <select class="mode-select" id="game-mode" v-model="state.mode" :disabled="state.busy" @change="resetGame">
+                <option value="computer">Mensch gegen Computer</option>
+                <option value="human">Mensch gegen Mensch</option>
+            </select>
+            <p v-if="state.mode === 'computer'">Du spielst Weiß, der Computer Schwarz.</p>
+            <p class="turn-indicator" id="turn-indicator" :data-player="state.current" role="status" aria-live="polite">{{ turnText }}</p>
+            <div class="player-count">
+                <span class="player-name white">Weiß</span>
+                <span class="count-detail" id="white-count">{{ playerStats("white") }}</span>
+            </div>
+            <div class="player-count">
+                <span class="player-name black">Schwarz</span>
+                <span class="count-detail" id="black-count">{{ playerStats("black") }}</span>
+            </div>
+            <p id="game-hint" aria-live="polite">{{ state.message }}</p>
+            <button class="action" id="new-game" type="button" :disabled="state.busy" @click="resetGame">Neues Spiel</button>
+            <div class="output-box" id="prolog-output" aria-live="polite">{{ state.prologOutput }}</div>
+        </aside>
+    </main>
+
+    <details>
+        <summary>Prolog-Regeln ansehen</summary>
+        <pre id="prolog-source">{{ prologRules.trim() }}</pre>
+    </details>
+    </div>
+
+    <script>
+        const POSITIONS = [
+            { id: "a1", x: 0, y: 0 }, { id: "d1", x: 3, y: 0 }, { id: "g1", x: 6, y: 0 },
+            { id: "b2", x: 1, y: 1 }, { id: "d2", x: 3, y: 1 }, { id: "f2", x: 5, y: 1 },
+            { id: "c3", x: 2, y: 2 }, { id: "d3", x: 3, y: 2 }, { id: "e3", x: 4, y: 2 },
+            { id: "a4", x: 0, y: 3 }, { id: "b4", x: 1, y: 3 }, { id: "c4", x: 2, y: 3 },
+            { id: "e4", x: 4, y: 3 }, { id: "f4", x: 5, y: 3 }, { id: "g4", x: 6, y: 3 },
+            { id: "c5", x: 2, y: 4 }, { id: "d5", x: 3, y: 4 }, { id: "e5", x: 4, y: 4 },
+            { id: "b6", x: 1, y: 5 }, { id: "d6", x: 3, y: 5 }, { id: "f6", x: 5, y: 5 },
+            { id: "a7", x: 0, y: 6 }, { id: "d7", x: 3, y: 6 }, { id: "g7", x: 6, y: 6 }
+        ];
+
+        const PROLOG_RULES = String.raw`
+% Benachbarte Punkte des Muehle-Bretts (ungerichtet ausgewertet)
+adjacent(a1,d1). adjacent(d1,g1). adjacent(g1,g4). adjacent(g4,g7).
+adjacent(a7,d7). adjacent(d7,g7). adjacent(a1,a4). adjacent(a4,a7).
+adjacent(b2,d2). adjacent(d2,f2). adjacent(f2,f4). adjacent(f4,f6).
+adjacent(b6,d6). adjacent(d6,f6). adjacent(b2,b4). adjacent(b4,b6).
+adjacent(c3,d3). adjacent(d3,e3). adjacent(e3,e4). adjacent(e4,e5).
+adjacent(c5,d5). adjacent(d5,e5). adjacent(c3,c4). adjacent(c4,c5).
+adjacent(d1,d2). adjacent(d2,d3). adjacent(g4,f4). adjacent(f4,e4).
+adjacent(d7,d6). adjacent(d6,d5). adjacent(a4,b4). adjacent(b4,c4).
+
+% Die 16 moeglichen Muehlen
+mill(a1,d1,g1). mill(b2,d2,f2). mill(c3,d3,e3).
+mill(a4,b4,c4). mill(e4,f4,g4). mill(c5,d5,e5).
+mill(b6,d6,f6). mill(a7,d7,g7).
+mill(a1,a4,a7). mill(b2,b4,b6). mill(c3,c4,c5).
+mill(d1,d2,d3). mill(d5,d6,d7). mill(e3,e4,e5).
+mill(f2,f4,f6). mill(g1,g4,g7).
+
+board_has(Piece, [Piece|_]).
+board_has(Piece, [_|Rest]) :- board_has(Piece, Rest).
+
+linked(A, B) :- adjacent(A, B).
+linked(A, B) :- adjacent(B, A).
+
+can_place(Board, _Player, To) :- board_has(pos(To, empty), Board).
+can_slide(Board, Player, From, To) :-
+    board_has(pos(From, Player), Board),
+    board_has(pos(To, empty), Board),
+    linked(From, To).
+can_fly(Board, Player, From, To) :-
+    piece_count(Board, Player, 3),
+    board_has(pos(From, Player), Board),
+    board_has(pos(To, empty), Board).
+
+piece_count([], _, 0).
+piece_count([pos(_, Player)|Rest], Player, Count) :-
+    !,
+    piece_count(Rest, Player, Remaining),
+    Count is Remaining + 1.
+piece_count([_|Rest], Player, Count) :- piece_count(Rest, Player, Count).
+
+contains_position(Position, A, _, _) :- Position = A.
+contains_position(Position, _, B, _) :- Position = B.
+contains_position(Position, _, _, C) :- Position = C.
+
+mill_complete(Board, Player, Position) :-
+    mill(A, B, C),
+    contains_position(Position, A, B, C),
+    board_has(pos(A, Player), Board),
+    board_has(pos(B, Player), Board),
+    board_has(pos(C, Player), Board).
+
+mill_created(Before, After, Player, Position) :-
+    mill(A, B, C),
+    contains_position(Position, A, B, C),
+    board_has(pos(A, Player), After),
+    board_has(pos(B, Player), After),
+    board_has(pos(C, Player), After),
+    \+ (board_has(pos(A, Player), Before),
+        board_has(pos(B, Player), Before),
+        board_has(pos(C, Player), Before)).
+
+has_unprotected_piece(Board, Player) :-
+    board_has(pos(Position, Player), Board),
+    \+ mill_complete(Board, Player, Position).
+
+can_remove(Board, Player, Position) :-
+    board_has(pos(Position, Player), Board),
+    ( \+ has_unprotected_piece(Board, Player)
+    ; \+ mill_complete(Board, Player, Position)
+    ).
+
+has_legal_move(Board, Player) :- can_slide(Board, Player, _, _).
+has_legal_move(Board, Player) :- can_fly(Board, Player, _, _).
+
+legal_action(Board, Player, Reserve, set(To)) :-
+    Reserve > 0,
+    can_place(Board, Player, To).
+legal_action(Board, Player, 0, move(From, To)) :-
+    piece_count(Board, Player, Count),
+    Count > 3,
+    can_slide(Board, Player, From, To).
+legal_action(Board, Player, 0, fly(From, To)) :-
+    piece_count(Board, Player, 3),
+    can_fly(Board, Player, From, To).
+
+legal_capture(Board, Player, Position) :- can_remove(Board, Player, Position).
+
+replace_piece([], _, _, []).
+replace_piece([pos(Position, _)|Rest], Position, Player, [pos(Position, Player)|Rest]) :- !.
+replace_piece([Piece|Rest], Position, Player, [Piece|Updated]) :-
+    replace_piece(Rest, Position, Player, Updated).
+
+action_result(Board, Player, set(To), After, To) :-
+    replace_piece(Board, To, Player, After).
+action_result(Board, Player, move(From, To), After, To) :-
+    replace_piece(Board, From, empty, Vacated),
+    replace_piece(Vacated, To, Player, After).
+action_result(Board, Player, fly(From, To), After, To) :-
+    replace_piece(Board, From, empty, Vacated),
+    replace_piece(Vacated, To, Player, After).
+
+action_creates_mill(Board, Player, Reserve, Action) :-
+    legal_action(Board, Player, Reserve, Action),
+    action_result(Board, Player, Action, After, Destination),
+    mill_created(Board, After, Player, Destination).
+
+opponent(white, black).
+opponent(black, white).
+
+blocks_mill(Board, Player, Reserve, OpponentReserve, Action) :-
+    opponent(Player, Opponent),
+    legal_action(Board, Player, Reserve, Action),
+    action_result(Board, Player, Action, After, _),
+    action_creates_mill(Board, Opponent, OpponentReserve, _),
+    \+ action_creates_mill(After, Opponent, OpponentReserve, _).
+`;
+
+        const state = Vue.reactive({
+            board: Object.fromEntries(POSITIONS.map(({ id }) => [id, "empty"])),
+            reserve: { white: 9, black: 9 },
+            mode: "computer",
+            current: "white",
+            selected: null,
+            pendingCapture: false,
+            gameOver: false,
+            busy: false,
+            thinking: false,
+            message: "Tau Prolog wird geladen ...",
+            prologOutput: "Die Prolog-Regeln werden geladen."
+        });
+
+        function otherPlayer(player) {
+            return player === "white" ? "black" : "white";
+        }
+
+        function playerName(player) {
+            return player === "white" ? "Weiß" : "Schwarz";
+        }
+
+        function boardTerm(board) {
+            return `[${POSITIONS.map(({ id }) => `pos(${id},${board[id]})`).join(",")}]`;
+        }
+
+        function countPieces(player) {
+            return POSITIONS.reduce((count, { id }) => count + (state.board[id] === player ? 1 : 0), 0);
+        }
+
+        function runProlog(goal) {
+            return new Promise((resolve, reject) => {
+                const session = pl.create();
+                session.consult(PROLOG_RULES, {
+                    success: function() {
+                        session.query(`${goal}.`, {
+                            success: function() {
+                                session.answer({
+                                    success: function() { resolve(true); },
+                                    fail: function() { resolve(false); },
+                                    error: function(error) { reject(error); }
+                                });
+                            },
+                            error: function(error) { reject(error); }
+                        });
+                    },
+                    error: function(error) { reject(error); }
+                });
+            });
+        }
+
+        function prologSolutions(goal) {
+            return new Promise((resolve, reject) => {
+                const session = pl.create();
+                const answers = [];
+                const nextAnswer = () => session.answer({
+                    success: function(answer) {
+                        answers.push(session.format_answer(answer));
+                        nextAnswer();
+                    },
+                    fail: function() { resolve(answers); },
+                    error: function(error) { reject(error); }
+                });
+
+                session.consult(PROLOG_RULES, {
+                    success: function() {
+                        session.query(`${goal}.`, {
+                            success: nextAnswer,
+                            error: function(error) { reject(error); }
+                        });
+                    },
+                    error: function(error) { reject(error); }
+                });
+            });
+        }
+
+        function parseActions(answers) {
+            return answers.map(answer => {
+                const match = answer.match(/\bAction\s*=\s*(set|move|fly)\(([^()]*)\)/);
+                if (!match) return null;
+                return { type: match[1], positions: match[2].split(",").map(position => position.trim()) };
+            }).filter(Boolean);
+        }
+
+        function chooseRandom(items) {
+            return items[Math.floor(Math.random() * items.length)];
+        }
+
+        async function checkRule(goal) {
+            const result = await runProlog(goal);
+            state.prologOutput = `${goal}.\n${result ? "true." : "false."}`;
+            return result;
+        }
+
+        function setMessage(message) {
+            state.message = message;
+        }
+
+        function resetGame() {
+            state.board = Object.fromEntries(POSITIONS.map(({ id }) => [id, "empty"]));
+            state.reserve = { white: 9, black: 9 };
+            state.current = "white";
+            state.selected = null;
+            state.pendingCapture = false;
+            state.gameOver = false;
+            state.busy = false;
+            state.thinking = false;
+            setMessage("Wähle einen freien Punkt, um einen Stein zu setzen.");
+            state.prologOutput = "Neues Spiel. Prolog prüft die Spielzüge.";
+        }
+
+        async function finishTurn() {
+            state.selected = null;
+            state.current = otherPlayer(state.current);
+            const player = state.current;
+            if (state.reserve[player] === 0) {
+                const pieces = countPieces(player);
+                if (pieces < 3) {
+                    state.gameOver = true;
+                    state.message = `${playerName(otherPlayer(player))} gewinnt: ${playerName(player)} hat weniger als drei Steine.`;
+                    return;
+                }
+                const hasMove = await checkRule(`has_legal_move(${boardTerm(state.board)},${player})`);
+                if (!hasMove) {
+                    state.gameOver = true;
+                    state.message = `${playerName(otherPlayer(player))} gewinnt: ${playerName(player)} kann nicht ziehen.`;
+                    return;
+                }
+            }
+            state.message = state.reserve[player] > 0
+                ? `${playerName(player)} setzt einen Stein auf einen freien Punkt.`
+                : countPieces(player) === 3
+                    ? `${playerName(player)} darf mit drei Steinen zu einem beliebigen freien Punkt springen.`
+                    : `${playerName(player)}: Wähle einen Stein und danach einen benachbarten freien Punkt.`;
+            if (state.mode === "computer" && player === "black") {
+                await computerTurn();
+            }
+        }
+
+        async function computerTurn() {
+            if (state.gameOver || state.current !== "black") return;
+            state.thinking = true;
+            state.message = "Der Computer überlegt ...";
+            try {
+                await new Promise(resolve => setTimeout(resolve, 220));
+                if (state.pendingCapture) {
+                    const board = boardTerm(state.board);
+                    const answers = await prologSolutions(`legal_capture(${board},white,Position)`);
+                    const positions = answers.map(answer => {
+                        const match = answer.match(/\bPosition\s*=\s*([a-z][a-z0-9_]*)/);
+                        return match ? match[1] : null;
+                    }).filter(Boolean);
+                    if (positions.length === 0) throw new Error("Kein legaler Schlagzug gefunden.");
+                    const position = chooseRandom(positions);
+                    if (!await checkRule(`can_remove(${board},white,${position})`)) {
+                        throw new Error("Der Schlagzug wurde von Prolog abgelehnt.");
+                    }
+                    state.board[position] = "empty";
+                    state.pendingCapture = false;
+                    await finishTurn();
+                    return;
+                }
+
+                const board = boardTerm(state.board);
+                const reserve = state.reserve.black;
+                const millAnswers = await prologSolutions(`action_creates_mill(${board},black,${reserve},Action)`);
+                const preferredActions = parseActions(millAnswers);
+                const blockAnswers = preferredActions.length > 0
+                    ? []
+                    : await prologSolutions(`blocks_mill(${board},black,${reserve},${state.reserve.white},Action)`);
+                const blockingActions = parseActions(blockAnswers);
+                const legalAnswers = preferredActions.length > 0
+                    ? millAnswers
+                    : blockingActions.length > 0
+                        ? blockAnswers
+                        : await prologSolutions(`legal_action(${board},black,${reserve},Action)`);
+                const actions = preferredActions.length > 0
+                    ? preferredActions
+                    : blockingActions.length > 0
+                        ? blockingActions
+                        : parseActions(legalAnswers);
+                if (actions.length === 0) {
+                    state.gameOver = true;
+                    state.message = "Weiß gewinnt: Der Computer findet keinen legalen Zug.";
+                    return;
+                }
+
+                const action = chooseRandom(actions);
+                const before = { ...state.board };
+                const destination = action.type === "set" ? action.positions[0] : action.positions[1];
+                if (action.type === "set") {
+                    state.board[destination] = "black";
+                    state.reserve.black -= 1;
+                } else {
+                    const [from] = action.positions;
+                    state.board[from] = "empty";
+                    state.board[destination] = "black";
+                }
+                await completeMove(before, destination);
+                if (state.pendingCapture) await computerTurn();
+            } finally {
+                state.thinking = false;
+            }
+        }
+
+        async function completeMove(before, destination) {
+            const created = await checkRule(
+                `mill_created(${boardTerm(before)},${boardTerm(state.board)},${state.current},${destination})`
+            );
+            state.selected = null;
+            if (created) {
+                state.pendingCapture = true;
+                setMessage(`${playerName(state.current)} hat eine Mühle geschlossen. Wähle einen gegnerischen Stein zum Entfernen.`);
+            } else {
+                await finishTurn();
+            }
+        }
+
+        async function handlePointClick(position) {
+            if (state.busy || state.gameOver) return;
+            if (state.mode === "computer" && state.current === "black") return;
+            state.busy = true;
+            try {
+                if (state.pendingCapture) {
+                    const opponent = otherPlayer(state.current);
+                    if (state.board[position] !== opponent) {
+                        setMessage("Wähle einen gegnerischen Stein. Steine in einer Mühle sind geschützt, solange andere Steine verfügbar sind.");
+                        return;
+                    }
+                    const allowed = await checkRule(`can_remove(${boardTerm(state.board)},${opponent},${position})`);
+                    if (!allowed) {
+                        setMessage("Dieser Stein ist geschützt. Entferne einen gegnerischen Stein außerhalb einer Mühle.");
+                        return;
+                    }
+                    state.board[position] = "empty";
+                    state.pendingCapture = false;
+                    await finishTurn();
+                    return;
+                }
+
+                const player = state.current;
+                if (state.reserve[player] > 0) {
+                    if (state.board[position] !== "empty") {
+                        setMessage("Beim Setzen muss der Punkt frei sein.");
+                        return;
+                    }
+                    const before = { ...state.board };
+                    const allowed = await checkRule(`can_place(${boardTerm(state.board)},${player},${position})`);
+                    if (!allowed) {
+                        setMessage("Prolog erlaubt diesen Zug nicht.");
+                        return;
+                    }
+                    state.board[position] = player;
+                    state.reserve[player] -= 1;
+                    await completeMove(before, position);
+                    return;
+                }
+
+                if (state.board[position] === player) {
+                    state.selected = state.selected === position ? null : position;
+                    setMessage(state.selected
+                        ? `${position} ausgewählt. Wähle ein freies Ziel.`
+                        : `${playerName(player)}: Wähle einen Stein zum Ziehen.`);
+                    return;
+                }
+                if (!state.selected) {
+                    setMessage("Wähle zuerst einen eigenen Stein.");
+                    return;
+                }
+                if (state.board[position] !== "empty") {
+                    setMessage("Das Ziel muss frei sein.");
+                    return;
+                }
+
+                const from = state.selected;
+                const before = { ...state.board };
+                const canFly = countPieces(player) === 3;
+                const rule = canFly ? "can_fly" : "can_slide";
+                const allowed = await checkRule(`${rule}(${boardTerm(state.board)},${player},${from},${position})`);
+                if (!allowed) {
+                    setMessage(canFly ? "Dieser Zielpunkt ist nicht frei." : "Der Zielpunkt ist nicht benachbart oder nicht frei.");
+                    return;
+                }
+                state.board[from] = "empty";
+                state.board[position] = player;
+                await completeMove(before, position);
+            } catch (error) {
+                setMessage(`Tau-Prolog-Fehler: ${error.message || error}`);
+            } finally {
+                state.busy = false;
+            }
+        }
+
+        const game = Vue.createApp({
+            data() {
+                return { positions: POSITIONS, prologRules: PROLOG_RULES, state };
+            },
+            computed: {
+                turnText() {
+                    if (state.thinking) return "Der Computer überlegt ...";
+                    return state.gameOver ? state.message : `${playerName(state.current)} ist am Zug`;
+                }
+            },
+            methods: {
+                handlePointClick,
+                resetGame,
+                pointClasses(id) {
+                    return {
+                        point: true,
+                        "white-piece": state.board[id] === "white",
+                        "black-piece": state.board[id] === "black",
+                        selected: state.selected === id
+                    };
+                },
+                pointLabel(id) {
+                    return `${id}, ${state.board[id] === "empty" ? "frei" : `Stein ${playerName(state.board[id])}`}`;
+                },
+                pointTitle(id) {
+                    return `${id}${state.board[id] === "empty" ? " (frei)" : `: ${playerName(state.board[id])}`}`;
+                },
+                playerStats(player) {
+                    const onBoard = countPieces(player);
+                    const captured = 9 - state.reserve[player] - onBoard;
+                    return `${state.reserve[player]} zum Setzen · ${onBoard} auf dem Brett · ${captured} geschlagen`;
+                }
+            },
+            mounted() {
+                resetGame();
+                if (typeof pl === "undefined") {
+                    setMessage("Tau Prolog konnte nicht geladen werden. Prüfe deine Internetverbindung.");
+                } else {
+                    setMessage("Wähle einen freien Punkt, um den ersten Stein zu setzen.");
+                }
+            }
+        });
+
+        game.mount("#app");
+    </script>
+</body>
+</html>
